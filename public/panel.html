@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>Panel - Statuspage</title>
+    <!-- Materialize CSS for Material UI look -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --accent-gray: #333333;
+      }
+      body {
+        background-color: #121212;
+        color: #e0e0e0;
+      }
+      .container {
+        margin-top: 30px;
+        width: 95%;
+        max-width: 1400px;
+      }
+      .hidden {
+        display: none !important;
+      }
+      .card-panel {
+        border-radius: 8px;
+        background-color: #1e1e1e;
+        border: 1px solid var(--accent-gray);
+      }
+      .check-item,
+      .incident-item {
+        padding: 15px;
+        border: 1px solid var(--accent-gray);
+        border-radius: 4px;
+        margin-bottom: 10px;
+        background: #2c2c2c;
+      }
+      .actions {
+        text-align: right;
+      }
+      .logout-btn {
+        float: right;
+      }
+      nav {
+        background-color: #222 !important;
+        margin-bottom: 20px;
+      }
+      h4 {
+        color: #e0e0e0;
+        margin-top: 0;
+      }
+      input,
+      select {
+        color: #e0e0e0 !important;
+      }
+      select.browser-default {
+        background-color: #333 !important;
+        border: 1px solid #555 !important;
+        padding: 5px;
+        outline: none;
+        border-radius: 4px;
+      }
+      input::placeholder {
+        color: #888 !important;
+      }
+      .input-field > label {
+        color: #aaa !important;
+      }
+      .drag-handle {
+        cursor: grab;
+        padding-top: 15px;
+        color: #888;
+      }
+      .dropdown-content {
+        background-color: #2c2c2c;
+      }
+      .dropdown-content li > a,
+      .dropdown-content li > span {
+        color: #e0e0e0;
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="navbar" class="hidden">
+      <div class="nav-wrapper px-2">
+        <a href="/" class="brand-logo left" style="margin-left: 15px"
+          ><i class="material-icons">arrow_back</i>Admin Panel</a
+        >
+        <ul class="right">
+          <li>
+            <a id="btn-logout" href="#!"
+              >Logout <i class="material-icons right">exit_to_app</i></a
+            >
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="container">
+      <!-- Login Section -->
+      <div id="login-section" class="row">
+        <div class="col s12 m6 offset-m3">
+          <div class="card-panel">
+            <h4 class="center-align" id="login-title">Login</h4>
+            <div class="input-field">
+              <i class="material-icons prefix">lock</i>
+              <input type="password" id="login-password" />
+              <label for="login-password" id="login-label"
+                >Admin password</label
+              >
+            </div>
+            <div class="center-align" id="login-btn-container">
+              <button
+                id="btn-login"
+                class="btn waves-effect waves-light blue darken-2"
+              >
+                Log in
+                <i class="material-icons right">send</i>
+              </button>
+            </div>
+            <div class="center-align hidden" id="setup-btn-container">
+              <button
+                id="btn-setup"
+                class="btn waves-effect waves-light green darken-2"
+              >
+                Set password
+                <i class="material-icons right">save</i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin Panel -->
+      <div id="admin-panel" class="hidden">
+        <div class="row">
+          <div class="col s12">
+            <div class="card-panel">
+              <h4>Edit checks</h4>
+              <div id="edit-checks-list"></div>
+              <button
+                id="btn-add-check"
+                class="btn waves-effect waves-light green"
+              >
+                <i class="material-icons left">add</i>Add check
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col s12">
+            <div class="card-panel">
+              <h4>Edit incidents</h4>
+              <div id="edit-incidents-list"></div>
+              <button
+                id="btn-add-incident"
+                class="btn waves-effect waves-light green"
+              >
+                <i class="material-icons left">add</i>Add incident
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col s12" style="text-align: right; margin-bottom: 20px">
+            <button id="btn-save-all" class="btn waves-effect waves-light blue">
+              <i class="material-icons left">save</i>Save Config
+            </button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col s12 m6 offset-m3">
+            <div class="card-panel">
+              <h4>Change password</h4>
+              <div class="input-field">
+                <i class="material-icons prefix">vpn_key</i>
+                <input type="password" id="new-password" />
+                <label for="new-password">New password</label>
+              </div>
+              <div class="center-align">
+                <button
+                  id="btn-change-password"
+                  class="btn waves-effect waves-light orange darken-2"
+                >
+                  Apply
+                  <i class="material-icons right">update</i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="panel.js"></script>
+  </body>
+</html>

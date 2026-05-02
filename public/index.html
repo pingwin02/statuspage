@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>Status - Pingwiniasty</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div id="status-content">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          "
+        >
+          <h1 style="margin: 0" data-i18n="system_status">Status systemu</h1>
+          <div>
+            <button
+              id="btn-lang"
+              style="
+                padding: 8px 12px;
+                cursor: pointer;
+                border-radius: 4px;
+                border: 1px solid var(--accent-gray);
+                background: transparent;
+                color: inherit;
+                margin-right: 10px;
+              "
+            >
+              EN
+            </button>
+            <button
+              id="btn-refresh"
+              style="
+                padding: 8px 12px;
+                cursor: pointer;
+                border-radius: 4px;
+                border: 1px solid var(--accent-gray);
+                background: transparent;
+                color: inherit;
+              "
+              data-i18n="refresh"
+            >
+              Odśwież
+            </button>
+          </div>
+        </div>
+        <div id="overall-status">
+          <ul>
+            <li class="panel" data-i18n="loading">Ładowanie statusów...</li>
+          </ul>
+        </div>
+
+        <h1 data-i18n="services">Usługi</h1>
+        <ul id="services-list"></ul>
+        <p
+          class="small info"
+          id="last-update"
+          style="cursor: pointer"
+          onclick="window.location.href = '/panel'"
+        ></p>
+
+        <div id="incidents-container" style="display: none">
+          <h1 data-i18n="incidents">Incydenty</h1>
+
+          <div id="active-incidents" style="margin-bottom: 20px">
+            <table id="incidents-table"></table>
+          </div>
+
+          <div
+            id="archive-container"
+            style="
+              display: none;
+              padding-top: 15px;
+              border-top: 1px solid var(--accent-gray);
+            "
+          >
+            <h2 data-i18n="archive" style="font-size: 1.3rem; margin-top: 0">
+              Archiwum
+            </h2>
+            <table id="archive-table" style="opacity: 0.7"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>

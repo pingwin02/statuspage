@@ -175,6 +175,7 @@ app.get("/api/status", async (req, res) => {
       group: item.group,
       name: item.name,
       status: isUp ? "success" : "failed",
+      url: item.host || "",
     });
   }
 
@@ -213,6 +214,19 @@ app.post("/api/password", ensureAuth, async (req, res) => {
   } else {
     res.status(400).json({ success: false });
   }
+});
+
+app.get("/favicon.ico", (req, res) => {
+  const data = readData();
+
+  const hasOutages = data.cached_outagesCount > 0;
+  const emoji = hasOutages ? "🔴" : "🟢";
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><text y="27" font-size="27">${emoji}</text></svg>`;
+
+  res.setHeader("Content-Type", "image/svg+xml");
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.send(svg);
 });
 
 const PORT = process.env.PORT || 3000;

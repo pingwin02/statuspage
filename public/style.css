@@ -182,3 +182,14 @@ button {
   opacity: 1;
   transform: translateY(0);
 }
+
+.service-link {
+  color: inherit;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.service-link:hover {
+  text-decoration: underline;
+  opacity: 0.8;
+}

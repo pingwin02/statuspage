@@ -119,6 +119,8 @@ async function loadStatus(force = false) {
 
   const data = await res.json();
 
+  updateFavicon(data.outagesCount > 0);
+
   const overall = document.getElementById("overall-status");
   if (data.outagesCount === 0) {
     overall.innerHTML = `<ul><li class='panel success-bg'>${translations[currentLang].all_good}</li></ul>`;
@@ -144,10 +146,17 @@ async function loadStatus(force = false) {
 
     grouped[gName].forEach((check) => {
       const li = document.createElement("li");
+
+      let serviceNameHtml = check.name;
+      console.log(check);
+      if (check.url) {
+        serviceNameHtml = `<a href="${check.url}" target="_blank" class="service-link">${check.name}</a>`;
+      }
+
       if (check.status === "success") {
-        li.innerHTML = `${check.name} <span class='status success'>${translations[currentLang].is_up}</span>`;
+        li.innerHTML = `${serviceNameHtml} <span class='status success'>${translations[currentLang].is_up}</span>`;
       } else {
-        li.innerHTML = `${check.name} <span class='status failed'>${translations[currentLang].is_down}</span>`;
+        li.innerHTML = `${serviceNameHtml} <span class='status failed'>${translations[currentLang].is_down}</span>`;
       }
       list.appendChild(li);
     });
@@ -217,4 +226,18 @@ async function loadStatus(force = false) {
   } else {
     document.getElementById("incidents-container").style.display = "none";
   }
+}
+
+function updateFavicon(hasOutage) {
+  const emoji = hasOutage ? "🔴" : "🟢";
+
+  let link = document.querySelector("link[rel~='icon']");
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "icon";
+    document.head.appendChild(link);
+  }
+
+  link.type = "image/svg+xml";
+  link.href = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><text y="27" font-size="27">${emoji}</text></svg>`;
 }

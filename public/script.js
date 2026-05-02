@@ -148,7 +148,6 @@ async function loadStatus(force = false) {
       const li = document.createElement("li");
 
       let serviceNameHtml = check.name;
-      console.log(check);
       if (check.url) {
         serviceNameHtml = `<a href="${check.url}" target="_blank" class="service-link">${check.name}</a>`;
       }

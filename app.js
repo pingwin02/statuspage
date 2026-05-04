@@ -9,6 +9,8 @@ const bcrypt = require("bcrypt");
 const app = express();
 const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "config.json");
+const CACHE_TIME = 5 * 60 * 1000;
+const RATE_LIMIT = 30000;
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -28,23 +30,28 @@ app.get("/panel", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "panel.html"));
 });
 
-const readData = () => {
+// --- Data helpers ---
+
+function readData() {
   try {
-    const raw = fs.readFileSync(DATA_FILE, "utf8");
-    return JSON.parse(raw);
-  } catch (e) {
-    return { password: null, checks: [], incidents: [] };
+    return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+  } catch {
+    return { password: null, checks: [], outages: [] };
   }
-};
+}
 
-const writeData = (data) => {
+function writeData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf8");
-};
+}
 
-const ensureAuth = (req, res, next) => {
+// --- Auth middleware ---
+
+function ensureAuth(req, res, next) {
   if (req.session.loggedIn) return next();
   res.status(401).json({ error: "Unauthorized" });
-};
+}
+
+// --- Auth routes ---
 
 app.post("/api/login", async (req, res) => {
   const { password } = req.body;
@@ -57,10 +64,9 @@ app.post("/api/login", async (req, res) => {
   const isMatch = await bcrypt.compare(password, data.password);
   if (isMatch) {
     req.session.loggedIn = true;
-    res.json({ success: true });
-  } else {
-    res.status(401).json({ success: false });
+    return res.json({ success: true });
   }
+  res.status(401).json({ success: false });
 });
 
 app.post("/api/setup", async (req, res) => {
@@ -73,7 +79,6 @@ app.post("/api/setup", async (req, res) => {
   }
 
   const data = readData();
-
   if (data.password) {
     return res.status(400).json({ success: false, error: "Already setup" });
   }
@@ -94,13 +99,57 @@ app.get("/api/checkAuth", (req, res) => {
   res.json({ loggedIn: !!req.session.loggedIn, needsSetup: !data.password });
 });
 
+// --- Status check logic ---
+
+async function runCheck(item) {
+  if (item.type === "manual") {
+    return item.manual_status === "up";
+  }
+
+  if (item.type === "http") {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(item.host, {
+        method: "GET",
+        signal: controller.signal,
+        headers: { "User-Agent": "StatusPage/1.0" },
+      });
+      clearTimeout(timeoutId);
+      return response.status === 200;
+    } catch {
+      return false;
+    }
+  }
+
+  if (item.type === "ping") {
+    try {
+      execSync(`ping -c 1 -W 5 ${item.host}`, { stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  if (item.type === "port") {
+    try {
+      const parts = item.host.split(" ");
+      execSync(`nc -z -w 5 ${parts[0]} ${parts[1]}`, { stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
 app.get("/api/status", async (req, res) => {
   const data = readData();
   const forceRefresh = req.query.force === "true";
   const now = Date.now();
-  const CACHE_TIME = 5 * 60 * 1000;
 
-  if (forceRefresh && data.last_update && now - data.last_update < 30000) {
+  if (forceRefresh && data.last_update && now - data.last_update < RATE_LIMIT) {
     return res.status(429).json({ error: "Too many requests" });
   }
 
@@ -112,7 +161,7 @@ app.get("/api/status", async (req, res) => {
   ) {
     return res.json({
       checks: data.cached_checks,
-      incidents: data.incidents || [],
+      outages: data.outages || [],
       outagesCount: data.cached_outagesCount,
       last_update: data.last_update,
     });
@@ -121,54 +170,8 @@ app.get("/api/status", async (req, res) => {
   const results = [];
   let outagesCount = 0;
 
-  const checks = data.checks || [];
-  for (const item of checks) {
-    let isUp = false;
-    let current_code = "";
-
-    try {
-      if (item.type === "manual") {
-        isUp = item.manual_status === "up";
-        current_code = isUp ? "OK" : "Awaria";
-      } else if (item.type === "http") {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        try {
-          const response = await fetch(item.host, {
-            method: "GET",
-            signal: controller.signal,
-            headers: { "User-Agent": "StatusPage/1.0" },
-          });
-          clearTimeout(timeoutId);
-          isUp = response.status === 200;
-          current_code = response.status.toString();
-        } catch (err) {
-          isUp = false;
-          current_code = "Błąd/Timeout";
-        }
-      } else if (item.type === "ping") {
-        try {
-          execSync(`ping -c 1 -W 5 ${item.host}`, { stdio: "ignore" });
-          isUp = true;
-        } catch (e) {
-          isUp = false;
-          current_code = "Host nieosiągalny";
-        }
-      } else if (item.type === "port") {
-        try {
-          const parts = item.host.split(" ");
-          execSync(`nc -z -w 5 ${parts[0]} ${parts[1]}`, { stdio: "ignore" });
-          isUp = true;
-        } catch (e) {
-          isUp = false;
-          current_code = "Port zamknięty";
-        }
-      }
-    } catch (e) {
-      isUp = false;
-      current_code = "Error";
-    }
-
+  for (const item of data.checks || []) {
+    const isUp = await runCheck(item);
     if (!isUp) outagesCount++;
 
     results.push({
@@ -186,11 +189,13 @@ app.get("/api/status", async (req, res) => {
 
   res.json({
     checks: results,
-    incidents: data.incidents || [],
+    outages: data.outages || [],
     outagesCount,
     last_update: now,
   });
 });
+
+// --- Admin data routes ---
 
 app.get("/api/data", ensureAuth, (req, res) => {
   res.json(readData());
@@ -199,6 +204,7 @@ app.get("/api/data", ensureAuth, (req, res) => {
 app.post("/api/data", ensureAuth, (req, res) => {
   const newData = req.body;
   const currentData = readData();
+  newData.outages = Array.isArray(newData.outages) ? newData.outages : [];
   newData.password = currentData.password;
   writeData(newData);
   res.json({ success: true });
@@ -206,28 +212,27 @@ app.post("/api/data", ensureAuth, (req, res) => {
 
 app.post("/api/password", ensureAuth, async (req, res) => {
   const { newPassword } = req.body;
-  if (newPassword) {
-    const data = readData();
-    data.password = await bcrypt.hash(newPassword, 10);
-    writeData(data);
-    res.json({ success: true });
-  } else {
-    res.status(400).json({ success: false });
+  if (!newPassword) {
+    return res.status(400).json({ success: false });
   }
+  const data = readData();
+  data.password = await bcrypt.hash(newPassword, 10);
+  writeData(data);
+  res.json({ success: true });
 });
+
+// --- Favicon ---
 
 app.get("/favicon.ico", (req, res) => {
   const data = readData();
-
-  const hasOutages = data.cached_outagesCount > 0;
-  const emoji = hasOutages ? "🔴" : "🟢";
-
+  const emoji = data.cached_outagesCount > 0 ? "🔴" : "🟢";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg"><text y="27" font-size="27">${emoji}</text></svg>`;
-
   res.setHeader("Content-Type", "image/svg+xml");
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.send(svg);
 });
+
+// --- Start ---
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

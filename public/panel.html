@@ -1,248 +1,120 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, shrink-to-fit=no"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Panel - Statuspage</title>
-    <!-- Materialize CSS for Material UI look -->
     <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"
-    />
-    <link
-      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
-    <style>
-      :root {
-        color-scheme: light dark;
-        --accent-gray: #e7e7e7;
-        --bg-primary: #ffffff;
-        --bg-secondary: #f5f5f5;
-        --text-primary: #000000;
-        --text-secondary: #666666;
-        --text-tertiary: #999999;
-      }
-
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --accent-gray: #333333;
-          --bg-primary: #121212;
-          --bg-secondary: #1e1e1e;
-          --text-primary: #e0e0e0;
-          --text-secondary: #b0b0b0;
-          --text-tertiary: #888888;
-        }
-      }
-
-      body {
-        background-color: var(--bg-primary);
-        color: var(--text-primary);
-      }
-
-      .container {
-        margin-top: 30px;
-        width: 95%;
-        max-width: 1400px;
-      }
-
-      .hidden {
-        display: none !important;
-      }
-
-      .card-panel {
-        border-radius: 8px;
-        background-color: var(--bg-secondary);
-        border: 1px solid var(--accent-gray);
-      }
-
-      .check-item,
-      .incident-item {
-        padding: 15px;
-        border: 1px solid var(--accent-gray);
-        border-radius: 4px;
-        margin-bottom: 10px;
-        background: var(--bg-secondary);
-      }
-
-      .actions {
-        text-align: right;
-      }
-
-      .logout-btn {
-        float: right;
-      }
-
-      nav {
-        background-color: var(--bg-secondary) !important;
-        margin-bottom: 20px;
-      }
-
-      nav a {
-        color: var(--text-primary) !important;
-      }
-
-      nav .brand-logo {
-        color: var(--text-primary) !important;
-      }
-
-      nav i {
-        color: var(--text-primary) !important;
-      }
-
-      h4 {
-        color: var(--text-primary);
-        margin-top: 0;
-      }
-
-      input,
-      select {
-        color: var(--text-primary) !important;
-      }
-
-      select.browser-default {
-        background-color: var(--bg-secondary) !important;
-        border: 1px solid var(--accent-gray) !important;
-        padding: 5px;
-        outline: none;
-        border-radius: 4px;
-      }
-
-      input::placeholder {
-        color: var(--text-tertiary) !important;
-      }
-
-      .input-field > label {
-        color: var(--text-secondary) !important;
-      }
-
-      .drag-handle {
-        cursor: grab;
-        padding-top: 15px;
-        color: var(--text-tertiary);
-      }
-
-      .dropdown-content {
-        background-color: var(--bg-secondary);
-      }
-
-      .dropdown-content li > a,
-      .dropdown-content li > span {
-        color: var(--text-primary);
-      }
-    </style>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <nav id="navbar" class="hidden">
-      <div class="nav-wrapper px-2">
-        <a href="/" class="brand-logo left" style="margin-left: 15px"
-          ><i class="material-icons">arrow_back</i>Admin Panel</a
-        >
-        <ul class="right">
-          <li>
-            <a id="btn-logout" href="#!"
-              >Logout <i class="material-icons right">exit_to_app</i></a
-            >
-          </li>
-        </ul>
+    <nav id="navbar" class="navbar bg-body-tertiary border-bottom d-none">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+          <i class="bi bi-arrow-left me-2"></i>Admin Panel
+        </a>
+        <div>
+          <button id="btn-theme" class="btn btn-outline-secondary btn-sm me-2">
+            <i class="bi bi-sun"></i>
+          </button>
+          <button id="btn-logout" class="btn btn-outline-danger btn-sm">
+            Logout <i class="bi bi-box-arrow-right ms-1"></i>
+          </button>
+        </div>
       </div>
     </nav>
 
-    <div class="container">
+    <div class="container py-4" style="max-width: 1200px">
       <!-- Login Section -->
-      <div id="login-section" class="row">
-        <div class="col s12 m6 offset-m3">
-          <div class="card-panel">
-            <h4 class="center-align" id="login-title">Login</h4>
-            <div class="input-field">
-              <i class="material-icons prefix">lock</i>
-              <input type="password" id="login-password" />
-              <label for="login-password" id="login-label"
-                >Admin password</label
-              >
-            </div>
-            <div class="center-align" id="login-btn-container">
-              <button
-                id="btn-login"
-                class="btn waves-effect waves-light blue darken-2"
-              >
-                Log in
-                <i class="material-icons right">send</i>
-              </button>
-            </div>
-            <div class="center-align hidden" id="setup-btn-container">
-              <button
-                id="btn-setup"
-                class="btn waves-effect waves-light green darken-2"
-              >
-                Set password
-                <i class="material-icons right">save</i>
-              </button>
+      <div id="login-section" class="row justify-content-center">
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title text-center mb-4" id="login-title">
+                Login
+              </h4>
+              <div class="input-group mb-3">
+                <span class="input-group-text">
+                  <i class="bi bi-lock"></i>
+                </span>
+                <input
+                  type="password"
+                  id="login-password"
+                  class="form-control"
+                  placeholder="Admin password"
+                />
+              </div>
+              <div class="d-grid" id="login-btn-container">
+                <button id="btn-login" class="btn btn-primary">
+                  Log in <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+              </div>
+              <div class="d-grid d-none" id="setup-btn-container">
+                <button id="btn-setup" class="btn btn-success">
+                  Set password <i class="bi bi-check-lg ms-1"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Admin Panel -->
-      <div id="admin-panel" class="hidden">
-        <div class="row">
-          <div class="col s12">
-            <div class="card-panel">
-              <h4>Edit checks</h4>
-              <div id="edit-checks-list"></div>
-              <button
-                id="btn-add-check"
-                class="btn waves-effect waves-light green"
-              >
-                <i class="material-icons left">add</i>Add check
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="col s12">
-            <div class="card-panel">
-              <h4>Edit incidents</h4>
-              <div id="edit-incidents-list"></div>
-              <button
-                id="btn-add-incident"
-                class="btn waves-effect waves-light green"
-              >
-                <i class="material-icons left">add</i>Add incident
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="col s12" style="text-align: right; margin-bottom: 20px">
-            <button id="btn-save-all" class="btn waves-effect waves-light blue">
-              <i class="material-icons left">save</i>Save Config
+      <div id="admin-panel" class="d-none">
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="card-title">Edit checks</h5>
+            <div id="edit-checks-list"></div>
+            <button id="btn-add-check" class="btn btn-success btn-sm mt-2">
+              <i class="bi bi-plus-lg me-1"></i>Add check
             </button>
           </div>
         </div>
 
-        <div class="row">
-          <div class="col s12 m6 offset-m3">
-            <div class="card-panel">
-              <h4>Change password</h4>
-              <div class="input-field">
-                <i class="material-icons prefix">vpn_key</i>
-                <input type="password" id="new-password" />
-                <label for="new-password">New password</label>
-              </div>
-              <div class="center-align">
-                <button
-                  id="btn-change-password"
-                  class="btn waves-effect waves-light orange darken-2"
-                >
-                  Apply
-                  <i class="material-icons right">update</i>
-                </button>
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="card-title">Edit outages</h5>
+            <div id="edit-outages-list"></div>
+            <button id="btn-add-outage" class="btn btn-success btn-sm mt-2">
+              <i class="bi bi-plus-lg me-1"></i>Add outage
+            </button>
+          </div>
+        </div>
+
+        <div class="text-end mb-4">
+          <button id="btn-save-all" class="btn btn-primary">
+            <i class="bi bi-floppy me-1"></i>Save Config
+          </button>
+        </div>
+
+        <div class="row justify-content-center">
+          <div class="col-12 col-md-6">
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title">Change password</h5>
+                <div class="input-group mb-3">
+                  <span class="input-group-text">
+                    <i class="bi bi-key"></i>
+                  </span>
+                  <input
+                    type="password"
+                    id="new-password"
+                    class="form-control"
+                    placeholder="New password"
+                  />
+                </div>
+                <div class="d-grid">
+                  <button id="btn-change-password" class="btn btn-warning">
+                    Apply <i class="bi bi-arrow-repeat ms-1"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -250,7 +122,114 @@
       </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <div
+      class="toast-container position-fixed bottom-0 start-0 p-3"
+      id="toast-container"
+    ></div>
+
+    <template id="tpl-toast">
+      <div class="toast align-items-center border-0" role="alert">
+        <div class="d-flex">
+          <div class="toast-body"></div>
+          <button
+            type="button"
+            class="btn-close btn-close-white me-2 m-auto"
+            data-bs-dismiss="toast"
+          ></button>
+        </div>
+      </div>
+    </template>
+
+    <template id="tpl-check-row">
+      <div class="check-edit-row card card-body py-2 mb-2">
+        <div class="d-flex gap-2 align-items-center">
+          <i
+            class="bi bi-grip-vertical drag-handle fs-5 text-muted flex-shrink-0"
+          ></i>
+          <div class="row g-2 flex-grow-1">
+            <div class="col-6 col-sm-2">
+              <label class="form-label small mb-0">Group</label>
+              <input
+                type="text"
+                class="form-control form-control-sm check-group"
+                placeholder="Group"
+              />
+            </div>
+            <div class="col-6 col-sm-2">
+              <label class="form-label small mb-0">Type</label>
+              <select class="form-select form-select-sm check-type">
+                <option value="http">HTTP</option>
+                <option value="ping">PING</option>
+                <option value="port">PORT</option>
+                <option value="manual">Manual</option>
+              </select>
+            </div>
+            <div class="col-12 col-sm">
+              <label class="form-label small mb-0">Name</label>
+              <input
+                type="text"
+                class="form-control form-control-sm check-name"
+                placeholder="Name"
+              />
+            </div>
+            <div class="col-12 col-sm check-manual-col d-none">
+              <label class="form-label small mb-0">Status</label>
+              <select class="form-select form-select-sm check-manual">
+                <option value="up">UP</option>
+                <option value="down">DOWN</option>
+              </select>
+            </div>
+            <div class="col-12 col-sm check-host-col">
+              <label class="form-label small mb-0">Host/URL</label>
+              <input
+                type="text"
+                class="form-control form-control-sm check-host"
+                placeholder="Host/URL"
+              />
+            </div>
+          </div>
+          <button class="btn btn-danger btn-sm btn-remove-row flex-shrink-0">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <template id="tpl-outage-row">
+      <div class="outage-edit-row card card-body mb-2">
+        <div class="row g-2 align-items-end">
+          <div class="col-sm-3">
+            <label class="form-label small mb-0">Start</label>
+            <input
+              type="datetime-local"
+              class="form-control form-control-sm outage-date"
+            />
+          </div>
+          <div class="col-sm-3">
+            <label class="form-label small mb-0">End (opt.)</label>
+            <input
+              type="datetime-local"
+              class="form-control form-control-sm outage-end"
+            />
+          </div>
+          <div class="col-sm">
+            <label class="form-label small mb-0">Description</label>
+            <textarea
+              class="form-control form-control-sm outage-text"
+              placeholder="Description"
+              rows="1"
+            ></textarea>
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-danger btn-sm btn-remove-row">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <script src="panel.js"></script>
   </body>

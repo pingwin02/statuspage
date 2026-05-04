@@ -5,14 +5,15 @@ const translations = {
     loading: "Ładowanie statusów...",
     checking: "Sprawdzanie statusów...",
     services: "Usługi",
-    incidents: "Incydenty",
+    outages_section: "Awarie",
     archive: "Archiwum",
     all_good: "Wszystkie systemy działają poprawnie",
     outages: "Liczba awarii:",
     is_up: "Działa",
     is_down: "Nie działa",
     last_update: "Ostatnia aktualizacja:",
-    end_date: "Przewidywany koniec",
+    outage_start: "Start",
+    outage_expected_end: "Przewidywany koniec",
     others: "Inne",
     rate_limit_error:
       "Zbyt częste odświeżanie. Odczekaj przed kolejnym odświeżeniem.",
@@ -23,14 +24,15 @@ const translations = {
     loading: "Loading statuses...",
     checking: "Checking statuses...",
     services: "Services",
-    incidents: "Incidents",
+    outages_section: "Outages",
     archive: "Archive",
     all_good: "All systems are operational",
     outages: "Number of outages:",
     is_up: "Operational",
     is_down: "Down",
     last_update: "Last update:",
-    end_date: "Estimated end",
+    outage_start: "Start",
+    outage_expected_end: "Expected end",
     others: "Other",
     rate_limit_error:
       "Refreshing too fast. Please wait before refreshing again.",
@@ -39,204 +41,265 @@ const translations = {
 
 let currentLang = "pl";
 
+function t(key) {
+  return translations[currentLang][key] || key;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  initThemeToggle();
+
   const browserLang = navigator.language || navigator.userLanguage;
   currentLang = browserLang.startsWith("pl") ? "pl" : "en";
   applyTranslations();
 
   const langBtn = document.getElementById("btn-lang");
-  if (langBtn) {
+  langBtn.textContent = currentLang === "pl" ? "EN" : "PL";
+  langBtn.addEventListener("click", () => {
+    currentLang = currentLang === "pl" ? "en" : "pl";
     langBtn.textContent = currentLang === "pl" ? "EN" : "PL";
-    langBtn.addEventListener("click", () => {
-      currentLang = currentLang === "pl" ? "en" : "pl";
-      langBtn.textContent = currentLang === "pl" ? "EN" : "PL";
-      applyTranslations();
-      loadStatus(false);
-    });
-  }
+    applyTranslations();
+    loadStatus(false);
+  });
 
   loadStatus(false);
 
-  const btnRefresh = document.getElementById("btn-refresh");
-  if (btnRefresh) {
-    btnRefresh.addEventListener("click", () => {
-      overallStatusLoading();
-      loadStatus(true);
-    });
-  }
+  document.getElementById("btn-refresh").addEventListener("click", () => {
+    const overall = document.getElementById("overall-status");
+    overall.innerHTML = "";
+    const alert = document.createElement("div");
+    alert.className = "alert alert-secondary";
+    alert.textContent = t("checking");
+    overall.appendChild(alert);
+    loadStatus(true);
+  });
 });
+
+function initThemeToggle() {
+  const saved = localStorage.getItem("theme");
+  if (saved) {
+    document.documentElement.setAttribute("data-bs-theme", saved);
+  }
+  const btn = document.getElementById("btn-theme");
+  if (!btn) return;
+  updateThemeIcon(btn);
+  btn.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-bs-theme");
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-bs-theme", next);
+    localStorage.setItem("theme", next);
+    updateThemeIcon(btn);
+  });
+}
+
+function updateThemeIcon(btn) {
+  const isDark =
+    document.documentElement.getAttribute("data-bs-theme") === "dark";
+  btn.querySelector("i").className = isDark ? "bi bi-sun" : "bi bi-moon";
+}
 
 function applyTranslations() {
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.getAttribute("data-i18n");
     if (translations[currentLang][key]) {
-      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
-        el.placeholder = translations[currentLang][key];
-      } else {
-        el.textContent = translations[currentLang][key];
-      }
+      el.textContent = translations[currentLang][key];
     }
   });
 }
 
-function overallStatusLoading() {
-  document.getElementById("overall-status").innerHTML =
-    `<ul><li class='panel'>${translations[currentLang].checking}</li></ul>`;
-}
-
-function showToast(message, colorClass = "red") {
-  let tc = document.getElementById("custom-toast-container");
-  if (!tc) {
-    tc = document.createElement("div");
-    tc.id = "custom-toast-container";
-    document.body.appendChild(tc);
-  }
-  const t = document.createElement("div");
-  t.className = `custom-toast ${colorClass}`;
-  t.textContent = message;
-
-  tc.appendChild(t);
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      t.classList.add("show");
-    });
-  });
-
-  setTimeout(() => {
-    t.classList.remove("show");
-    setTimeout(() => t.remove(), 300);
-  }, 3500);
+function showToast(message, type = "danger") {
+  const container = document.getElementById("toast-container");
+  const tpl = document.getElementById("tpl-toast");
+  const clone = tpl.content.cloneNode(true);
+  const toastEl = clone.querySelector(".toast");
+  toastEl.classList.add("text-bg-" + type);
+  toastEl.querySelector(".toast-body").textContent = message;
+  container.appendChild(clone);
+  const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+  toast.show();
+  toastEl.addEventListener("hidden.bs.toast", () => toastEl.remove());
 }
 
 async function loadStatus(force = false) {
   const res = await fetch(`/api/status${force ? "?force=true" : ""}`);
 
   if (res.status === 429) {
-    showToast(translations[currentLang].rate_limit_error, "red");
+    showToast(t("rate_limit_error"), "danger");
     return loadStatus(false);
   }
 
   const data = await res.json();
-
   updateFavicon(data.outagesCount > 0);
 
   const overall = document.getElementById("overall-status");
-  if (data.outagesCount === 0) {
-    overall.innerHTML = `<ul><li class='panel success-bg'>${translations[currentLang].all_good}</li></ul>`;
-  } else {
-    overall.innerHTML = `<ul><li class='panel failed-bg'>${translations[currentLang].outages} ${data.outagesCount}</li></ul>`;
-  }
+  overall.innerHTML = "";
+  const alert = document.createElement("div");
+  alert.className =
+    data.outagesCount === 0 ? "alert alert-success" : "alert alert-danger";
+  alert.textContent =
+    data.outagesCount === 0
+      ? t("all_good")
+      : `${t("outages")} ${data.outagesCount}`;
+  overall.appendChild(alert);
 
+  renderServices(data.checks);
+
+  const d = data.last_update ? new Date(data.last_update) : new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  document.getElementById("last-update").textContent =
+    `${t("last_update")} ${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+  renderOutages(data.outages || []);
+}
+
+function renderServices(checks) {
   const list = document.getElementById("services-list");
+  const groupTpl = document.getElementById("tpl-group-header");
+  const itemTpl = document.getElementById("tpl-service-item");
   list.innerHTML = "";
 
   const grouped = {};
-  data.checks.forEach((check) => {
-    const gName = check.group || translations[currentLang].others;
+  checks.forEach((check) => {
+    const gName = check.group || t("others");
     if (!grouped[gName]) grouped[gName] = [];
     grouped[gName].push(check);
   });
 
   Object.keys(grouped).forEach((gName) => {
-    const grpHeader = document.createElement("li");
-    grpHeader.className = "panel group";
-    grpHeader.textContent = gName;
-    list.appendChild(grpHeader);
+    const header = groupTpl.content.cloneNode(true);
+    header.querySelector("li").textContent = gName;
+    list.appendChild(header);
 
     grouped[gName].forEach((check) => {
-      const li = document.createElement("li");
+      const item = itemTpl.content.cloneNode(true);
+      const nameSpan = item.querySelector(".service-name");
+      const badge = item.querySelector(".badge");
 
-      let serviceNameHtml = check.name;
       if (check.url) {
-        serviceNameHtml = `<a href="${check.url}" target="_blank" class="service-link">${check.name}</a>`;
+        const link = document.createElement("a");
+        link.href = check.url;
+        link.target = "_blank";
+        link.className = "service-link";
+        link.textContent = check.name;
+        nameSpan.appendChild(link);
+      } else {
+        nameSpan.textContent = check.name;
       }
 
-      if (check.status === "success") {
-        li.innerHTML = `${serviceNameHtml} <span class='status success'>${translations[currentLang].is_up}</span>`;
-      } else {
-        li.innerHTML = `${serviceNameHtml} <span class='status failed'>${translations[currentLang].is_down}</span>`;
-      }
-      list.appendChild(li);
+      const isUp = check.status === "success";
+      badge.classList.add(isUp ? "bg-success" : "bg-danger");
+      badge.textContent = isUp ? t("is_up") : t("is_down");
+
+      list.appendChild(item);
     });
   });
+}
 
-  const d = data.last_update ? new Date(data.last_update) : new Date();
-  document.getElementById("last-update").textContent =
-    `${translations[currentLang].last_update} ${("0" + d.getDate()).slice(-2)}.${("0" + (d.getMonth() + 1)).slice(-2)}.${d.getFullYear()} ${("0" + d.getHours()).slice(-2)}:${("0" + d.getMinutes()).slice(-2)}:${("0" + d.getSeconds()).slice(-2)}`;
-
-  if (data.incidents && data.incidents.length > 0) {
-    const activeIncidents = [];
-    const archivedIncidents = [];
-    const now = new Date();
-
-    data.incidents.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    data.incidents.forEach((inc) => {
-      if (inc.endDate) {
-        const end = new Date(inc.endDate);
-        if (end < now) {
-          archivedIncidents.push(inc);
-        } else {
-          activeIncidents.push(inc);
-        }
-      } else {
-        activeIncidents.push(inc);
-      }
-    });
-
-    if (activeIncidents.length > 0 || archivedIncidents.length > 0) {
-      document.getElementById("incidents-container").style.display = "block";
-    } else {
-      document.getElementById("incidents-container").style.display = "none";
-    }
-
-    if (activeIncidents.length > 0) {
-      document.getElementById("active-incidents").style.display = "block";
-      const table = document.getElementById("incidents-table");
-      table.innerHTML = "";
-      activeIncidents.forEach((inc) => {
-        const tr = document.createElement("tr");
-        let dString = inc.date.replace("T", " ");
-        if (inc.endDate)
-          dString += `<br><span class="small" style="font-weight:normal">${translations[currentLang].end_date}:<br>${inc.endDate.replace("T", " ")}</span>`;
-        tr.innerHTML = `<td class='date-col'>${dString}</td><td class='desc-col'>${inc.text}</td>`;
-        table.appendChild(tr);
-      });
-    } else {
-      const activeDiv = document.getElementById("active-incidents");
-      if (activeDiv) activeDiv.style.display = "none";
-    }
-
-    if (archivedIncidents.length > 0) {
-      document.getElementById("archive-container").style.display = "block";
-      const archiveTable = document.getElementById("archive-table");
-      archiveTable.innerHTML = "";
-      archivedIncidents.forEach((inc) => {
-        const tr = document.createElement("tr");
-        let dString = inc.date.replace("T", " ");
-        dString += `<br><span class="small" style="font-weight:normal">${translations[currentLang].end_date}:<br>${inc.endDate.replace("T", " ")}</span>`;
-        tr.innerHTML = `<td class='date-col'>${dString}</td><td class='desc-col'>${inc.text}</td>`;
-        archiveTable.appendChild(tr);
-      });
-    } else {
-      document.getElementById("archive-container").style.display = "none";
-    }
-  } else {
-    document.getElementById("incidents-container").style.display = "none";
+function renderOutages(outages) {
+  const container = document.getElementById("outages-container");
+  if (!outages.length) {
+    container.classList.add("d-none");
+    return;
   }
+
+  const now = new Date();
+  const sorted = [...outages].sort(
+    (a, b) => new Date(b.date) - new Date(a.date),
+  );
+
+  const active = [];
+  const archived = [];
+
+  sorted.forEach((inc) => {
+    if (inc.endDate && new Date(inc.endDate) < now) {
+      archived.push(inc);
+    } else {
+      active.push(inc);
+    }
+  });
+
+  if (!active.length && !archived.length) {
+    container.classList.add("d-none");
+    return;
+  }
+
+  container.classList.remove("d-none");
+
+  const activeDiv = document.getElementById("active-outages");
+  const activeTable = document.getElementById("outages-table");
+  if (active.length) {
+    activeDiv.classList.remove("d-none");
+    activeTable.innerHTML = "";
+    active.forEach((outage) =>
+      activeTable.appendChild(createOutageRow(outage)),
+    );
+  } else {
+    activeDiv.classList.add("d-none");
+  }
+
+  const archiveContainer = document.getElementById("archive-container");
+  const archiveTable = document.getElementById("archive-table");
+  if (archived.length) {
+    archiveContainer.classList.remove("d-none");
+    archiveTable.innerHTML = "";
+    archived.forEach((outage) =>
+      archiveTable.appendChild(createOutageRow(outage)),
+    );
+  } else {
+    archiveContainer.classList.add("d-none");
+  }
+}
+
+function createOutageRow(outage) {
+  const tr = document.createElement("tr");
+  const tdDate = document.createElement("td");
+  tdDate.className = "date-col text-muted";
+
+  const startDate = outage.date.replace("T", " ");
+  const startLine = document.createElement("div");
+  startLine.className = "outage-date-line";
+  const startLabel = document.createElement("span");
+  startLabel.className = "outage-date-label";
+  startLabel.textContent = `${t("outage_start")}:`;
+  const startValue = document.createElement("span");
+  startValue.className = "outage-date-value";
+  startValue.textContent = startDate;
+  startLine.appendChild(startLabel);
+  startLine.appendChild(document.createElement("br"));
+  startLine.appendChild(startValue);
+  tdDate.appendChild(startLine);
+
+  if (outage.endDate) {
+    const endLine = document.createElement("div");
+    endLine.className = "outage-date-line";
+    const endLabel = document.createElement("span");
+    endLabel.className = "outage-date-label";
+    endLabel.textContent = `${t("outage_expected_end")}:`;
+    const endValue = document.createElement("span");
+    endValue.className = "outage-date-value";
+    endValue.textContent = outage.endDate.replace("T", " ");
+    endLine.appendChild(endLabel);
+    endLine.appendChild(document.createElement("br"));
+    endLine.appendChild(endValue);
+    tdDate.appendChild(endLine);
+  }
+
+  const tdDesc = document.createElement("td");
+  tdDesc.className = "desc-col";
+  tdDesc.textContent = outage.text;
+
+  tr.appendChild(tdDate);
+  tr.appendChild(tdDesc);
+  return tr;
 }
 
 function updateFavicon(hasOutage) {
   const emoji = hasOutage ? "🔴" : "🟢";
-
   let link = document.querySelector("link[rel~='icon']");
   if (!link) {
     link = document.createElement("link");
     link.rel = "icon";
     document.head.appendChild(link);
   }
-
   link.type = "image/svg+xml";
   link.href = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><text y="27" font-size="27">${emoji}</text></svg>`;
 }

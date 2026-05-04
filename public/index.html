@@ -1,88 +1,96 @@
 <!doctype html>
-<html lang="pl">
+<html lang="pl" data-bs-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="robots" content="noindex, nofollow" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, shrink-to-fit=no"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Status - Pingwiniasty</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="container">
-      <div id="status-content">
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          "
-        >
-          <h1 style="margin: 0" data-i18n="system_status">Status systemu</h1>
-          <div>
-            <button
-              id="btn-lang"
-              style="
-                padding: 8px 12px;
-                cursor: pointer;
-                border-radius: 4px;
-                border: 1px solid var(--accent-gray);
-                background: transparent;
-                color: inherit;
-                margin-right: 10px;
-              "
-            >
-              EN
-            </button>
-            <button
-              id="btn-refresh"
-              style="
-                padding: 8px 12px;
-                cursor: pointer;
-                border-radius: 4px;
-                border: 1px solid var(--accent-gray);
-                background: transparent;
-                color: inherit;
-              "
-              data-i18n="refresh"
-            >
-              Odśwież
-            </button>
-          </div>
+    <div class="container py-4" style="max-width: 850px">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0" data-i18n="system_status">Status systemu</h1>
+        <div>
+          <button id="btn-theme" class="btn btn-outline-secondary btn-sm me-2">
+            <i class="bi bi-sun"></i>
+          </button>
+          <button id="btn-lang" class="btn btn-outline-secondary btn-sm me-2">
+            EN
+          </button>
+          <button
+            id="btn-refresh"
+            class="btn btn-outline-secondary btn-sm"
+            data-i18n="refresh"
+          >
+            Odśwież
+          </button>
         </div>
-        <div id="overall-status">
-          <ul>
-            <li class="panel" data-i18n="loading">Ładowanie statusów...</li>
-          </ul>
+      </div>
+
+      <div id="overall-status">
+        <div class="alert alert-secondary" data-i18n="loading">
+          Ładowanie statusów...
+        </div>
+      </div>
+
+      <h2 class="h5 mt-4" data-i18n="services">Usługi</h2>
+      <ul id="services-list" class="list-group mb-3"></ul>
+      <a href="/panel" class="text-muted small d-block" id="last-update"></a>
+
+      <div id="outages-container" class="d-none">
+        <h2 class="h5 mt-4" data-i18n="outages_section">Awarie</h2>
+        <div id="active-outages" class="mb-3">
+          <table id="outages-table" class="table table-sm"></table>
         </div>
 
-        <h1 data-i18n="services">Usługi</h1>
-        <ul id="services-list"></ul>
-        <p
-          class="small info"
-          id="last-update"
-          style="cursor: pointer"
-          onclick="window.location.href = '/panel'"
-        ></p>
-
-        <div id="incidents-container" style="display: none">
-          <h1 data-i18n="incidents">Incydenty</h1>
-
-          <div id="active-incidents" style="margin-bottom: 20px">
-            <table id="incidents-table"></table>
-          </div>
-
-          <div id="archive-container" style="display: none; padding-top: 15px">
-            <h2 data-i18n="archive" style="font-size: 1.3rem; margin-top: 0">
-              Archiwum
-            </h2>
-            <table id="archive-table" style="opacity: 0.7"></table>
-          </div>
+        <div id="archive-container" class="d-none pt-3">
+          <h3 class="h6 opacity-75" data-i18n="archive">Archiwum</h3>
+          <table id="archive-table" class="table table-sm opacity-75"></table>
         </div>
       </div>
     </div>
+
+    <template id="tpl-toast">
+      <div class="toast align-items-center border-0" role="alert">
+        <div class="d-flex">
+          <div class="toast-body"></div>
+          <button
+            type="button"
+            class="btn-close btn-close-white me-2 m-auto"
+            data-bs-dismiss="toast"
+          ></button>
+        </div>
+      </div>
+    </template>
+
+    <template id="tpl-group-header">
+      <li class="list-group-item group-header text-center"></li>
+    </template>
+
+    <template id="tpl-service-item">
+      <li
+        class="list-group-item d-flex justify-content-between align-items-center"
+      >
+        <span class="service-name"></span>
+        <span class="badge"></span>
+      </li>
+    </template>
+
+    <div
+      class="toast-container position-fixed bottom-0 start-0 p-3"
+      id="toast-container"
+    ></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>
   </body>
 </html>

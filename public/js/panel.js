@@ -154,6 +154,8 @@ async function loadAdminData() {
 }
 
 async function saveAll() {
+  const browserTimeZone =
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const checkRows = document.querySelectorAll(".check-edit-row");
   const checks = Array.from(checkRows).map((row) => {
     const type = row.querySelector(".check-type").value;
@@ -176,9 +178,22 @@ async function saveAll() {
     text: row.querySelector(".outage-text").value,
   }));
 
+  const invalidOutageIndex = outages.findIndex((outage) => {
+    if (!outage.date || !outage.endDate) return false;
+    return new Date(outage.endDate) <= new Date(outage.date);
+  });
+
+  if (invalidOutageIndex !== -1) {
+    showToast(
+      `Outage #${invalidOutageIndex + 1}: End date must be later than start date`,
+      "danger",
+    );
+    return;
+  }
+
   const res = await fetch("/api/data");
   const existing = await res.json();
-  const updated = { ...existing, checks, outages };
+  const updated = { ...existing, checks, outages, timezone: browserTimeZone };
 
   const saveRes = await fetch("/api/data", {
     method: "POST",

@@ -1,18 +1,16 @@
-# Node.js Status Page
+# Status Page
 
-A lightweight, fully featured, and secure status page and administration dashboard. Designed to replace legacy bash scripts and heavy external monitoring solutions by keeping everything simple and local.
+A lightweight and secure status page and administration dashboard. Designed to replace legacy bash scripts by keeping everything simple and local.
 
 ## Features
 
-- **Multi-protocol Monitoring:** Check the status of your services via HTTP(S) (mandates `200 OK`), ICMP Ping, or TCP Port (`nc`). You can also manually override the status for any service.
-- **Outage Management:** Inform your users about ongoing maintenance or past outages. Outages are chronologically sorted and automatically divided into "Active" and "Archive" based on their end dates.
-- **Secure Admin Panel:** Built-in web interface for creating checks and managing outages. Uses secure sessions and `bcrypt` hashed passwords.
-- **First-time Setup Wizard:** The application dynamically detects if it's running for the first time and will prompt you to set a secure admin password—meaning no plaintext passwords in your config.
-- **API Response Caching:** The backend caches check results for 5 minutes, significantly reducing the load on the host machine and preventing accidental DDoS scenarios from high traffic.
-- **Flat-file JSON Storage:** Zero external databases required. All settings, outages, and checks are saved securely inside `data/config.json`.
-- **Bootstrap 5 Dark UI:** Beautiful, responsive dark mode utilizing Bootstrap 5 with consistent styling across both the public dashboard and admin panel. SortableJS provides drag-and-drop ordering in the admin panel.
-- **Unified Notifications:** Both the public dashboard and admin panel use Bootstrap Toasts for consistent notification UX (rate-limit warnings, save confirmations, errors).
-- **Localization:** The public dashboard supports language toggling (English / Polish) directly on the client side.
+- **Multi-protocol Monitoring:** HTTP(S), ICMP Ping, TCP Port checks, or manual status override.
+- **Outage Management:** Chronologically sorted, auto-divided into "Active" and "Archive".
+- **Secure Admin Panel:** Bcrypt hashed passwords, secure sessions.
+- **Flat-file JSON Storage:** Zero databases—all data in `data/config.json`.
+- **Timezone-aware Display:** Visitor timezone conversion with timezone labels.
+- **Bootstrap 5 Dark UI:** Responsive, beautiful dark mode.
+- **Localization:** English / Polish language toggle.
 
 ## Prerequisites
 
@@ -42,6 +40,7 @@ A lightweight, fully featured, and secure status page and administration dashboa
    - For **Port** checks, input the host and port separated by a space (e.g., `localhost 3306`).
    - For **HTTP** checks, input the full URL (e.g., `https://example.com`).
 5. **Adding Outages:** You can describe ongoing issues or track resolved ones. Setting an "End date" will automatically move the outage to the "Archive" tab once the date passes.
+   - Outage timestamps are stored with the config timezone and shown on the public page in the visitor's timezone.
 
 ## License
 

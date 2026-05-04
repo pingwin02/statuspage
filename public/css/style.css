@@ -1,0 +1,104 @@
+.service-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.service-link:hover {
+  opacity: 0.8;
+}
+
+#last-update {
+  text-decoration: none;
+}
+
+#last-update:hover {
+  opacity: 0.7;
+}
+
+.outage-date-label {
+  font-weight: 600;
+  opacity: 0.9;
+  font-size: 0.8em;
+  color: var(--bs-secondary-color);
+}
+
+.outage-date-value {
+  opacity: 0.95;
+  color: var(--bs-secondary-color);
+}
+
+.group-header {
+  background-color: var(--bs-tertiary-bg);
+  font-weight: bold;
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.outage-text {
+  resize: none;
+  overflow: hidden;
+}
+
+.outage-row-col {
+  white-space: normal;
+  font-size: 0.85em;
+  line-height: 1.5;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.outage-dates-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin-bottom: 12px;
+}
+
+.outage-date-col {
+  padding: 8px;
+}
+
+.outage-date-col-start {
+  text-align: right;
+  border-right: 1px solid var(--bs-border-color-translucent);
+  padding-right: 16px;
+}
+
+.outage-date-col-end {
+  text-align: left;
+  padding-left: 16px;
+}
+
+.outage-date-label {
+  font-weight: 600;
+  opacity: 0.9;
+  font-size: 0.95em;
+  color: var(--bs-secondary-color);
+  margin-bottom: 4px;
+}
+
+.outage-date-value {
+  opacity: 0.95;
+  color: var(--bs-secondary-color);
+  font-size: 0.95em;
+}
+
+.outage-date-value-clickable {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.outage-date-value-clickable:hover {
+  opacity: 0.7;
+}
+
+.outage-line-desc {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bs-border-color-translucent);
+  color: var(--bs-body-color);
+  word-break: break-word;
+  text-align: center;
+}

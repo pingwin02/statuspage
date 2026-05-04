@@ -11,6 +11,8 @@ const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "config.json");
 const CACHE_TIME = 5 * 60 * 1000;
 const RATE_LIMIT = 30000;
+const DEFAULT_TIMEZONE =
+  Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -34,14 +36,44 @@ app.get("/panel", (req, res) => {
 
 function readData() {
   try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+    const data = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+    return {
+      password: null,
+      checks: [],
+      outages: [],
+      timezone: DEFAULT_TIMEZONE,
+      ...data,
+      checks: Array.isArray(data.checks) ? data.checks : [],
+      outages: Array.isArray(data.outages) ? data.outages : [],
+      timezone: data.timezone || DEFAULT_TIMEZONE,
+    };
   } catch {
-    return { password: null, checks: [], outages: [] };
+    return {
+      password: null,
+      checks: [],
+      outages: [],
+      timezone: DEFAULT_TIMEZONE,
+    };
   }
 }
 
 function writeData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf8");
+  const normalized = {
+    password: null,
+    checks: [],
+    outages: [],
+    timezone: DEFAULT_TIMEZONE,
+    ...data,
+    checks: Array.isArray(data.checks) ? data.checks : [],
+    outages: Array.isArray(data.outages) ? data.outages : [],
+    timezone: data.timezone || DEFAULT_TIMEZONE,
+  };
+  fs.writeFileSync(DATA_FILE, JSON.stringify(normalized, null, 2), "utf8");
+}
+
+function sanitizeData(data) {
+  const { password, ...safeData } = data;
+  return safeData;
 }
 
 // --- Auth middleware ---
@@ -84,6 +116,7 @@ app.post("/api/setup", async (req, res) => {
   }
 
   data.password = await bcrypt.hash(password, 10);
+  data.timezone = data.timezone || DEFAULT_TIMEZONE;
   writeData(data);
   req.session.loggedIn = true;
   res.json({ success: true });
@@ -164,6 +197,7 @@ app.get("/api/status", async (req, res) => {
       outages: data.outages || [],
       outagesCount: data.cached_outagesCount,
       last_update: data.last_update,
+      timezone: data.timezone || DEFAULT_TIMEZONE,
     });
   }
 
@@ -192,20 +226,36 @@ app.get("/api/status", async (req, res) => {
     outages: data.outages || [],
     outagesCount,
     last_update: now,
+    timezone: data.timezone || DEFAULT_TIMEZONE,
   });
 });
 
 // --- Admin data routes ---
 
 app.get("/api/data", ensureAuth, (req, res) => {
-  res.json(readData());
+  res.json(sanitizeData(readData()));
 });
 
 app.post("/api/data", ensureAuth, (req, res) => {
   const newData = req.body;
   const currentData = readData();
   newData.outages = Array.isArray(newData.outages) ? newData.outages : [];
+
+  const hasInvalidOutageDates = newData.outages.some((outage) => {
+    if (!outage?.date || !outage?.endDate) return false;
+    return new Date(outage.endDate) <= new Date(outage.date);
+  });
+
+  if (hasInvalidOutageDates) {
+    return res.status(400).json({
+      success: false,
+      error: "End date must be later than start date",
+    });
+  }
+
   newData.password = currentData.password;
+  newData.timezone =
+    newData.timezone || currentData.timezone || DEFAULT_TIMEZONE;
   writeData(newData);
   res.json({ success: true });
 });

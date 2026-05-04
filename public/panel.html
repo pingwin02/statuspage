@@ -19,75 +19,119 @@
     <style>
       :root {
         color-scheme: light dark;
-        --accent-gray: #333333;
+        --accent-gray: #e7e7e7;
+        --bg-primary: #ffffff;
+        --bg-secondary: #f5f5f5;
+        --text-primary: #000000;
+        --text-secondary: #666666;
+        --text-tertiary: #999999;
       }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --accent-gray: #333333;
+          --bg-primary: #121212;
+          --bg-secondary: #1e1e1e;
+          --text-primary: #e0e0e0;
+          --text-secondary: #b0b0b0;
+          --text-tertiary: #888888;
+        }
+      }
+
       body {
-        background-color: #121212;
-        color: #e0e0e0;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
       }
+
       .container {
         margin-top: 30px;
         width: 95%;
         max-width: 1400px;
       }
+
       .hidden {
         display: none !important;
       }
+
       .card-panel {
         border-radius: 8px;
-        background-color: #1e1e1e;
+        background-color: var(--bg-secondary);
         border: 1px solid var(--accent-gray);
       }
+
       .check-item,
       .incident-item {
         padding: 15px;
         border: 1px solid var(--accent-gray);
         border-radius: 4px;
         margin-bottom: 10px;
-        background: #2c2c2c;
+        background: var(--bg-secondary);
       }
+
       .actions {
         text-align: right;
       }
+
       .logout-btn {
         float: right;
       }
+
       nav {
-        background-color: #222 !important;
+        background-color: var(--bg-secondary) !important;
         margin-bottom: 20px;
       }
+
+      nav a {
+        color: var(--text-primary) !important;
+      }
+
+      nav .brand-logo {
+        color: var(--text-primary) !important;
+      }
+
+      nav i {
+        color: var(--text-primary) !important;
+      }
+
       h4 {
-        color: #e0e0e0;
+        color: var(--text-primary);
         margin-top: 0;
       }
+
       input,
       select {
-        color: #e0e0e0 !important;
+        color: var(--text-primary) !important;
       }
+
       select.browser-default {
-        background-color: #333 !important;
-        border: 1px solid #555 !important;
+        background-color: var(--bg-secondary) !important;
+        border: 1px solid var(--accent-gray) !important;
         padding: 5px;
         outline: none;
         border-radius: 4px;
       }
+
       input::placeholder {
-        color: #888 !important;
+        color: var(--text-tertiary) !important;
       }
+
       .input-field > label {
-        color: #aaa !important;
+        color: var(--text-secondary) !important;
       }
+
       .drag-handle {
         cursor: grab;
         padding-top: 15px;
-        color: #888;
+        color: var(--text-tertiary);
       }
+
       .dropdown-content {
-        background-color: #2c2c2c;
+        background-color: var(--bg-secondary);
       }
+
       .dropdown-content li > a,
       .dropdown-content li > span {
-        color: #e0e0e0;
+        color: var(--text-primary);
       }
     </style>
   </head>

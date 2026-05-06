@@ -256,6 +256,11 @@ app.post("/api/data", ensureAuth, (req, res) => {
   newData.password = currentData.password;
   newData.timezone =
     newData.timezone || currentData.timezone || DEFAULT_TIMEZONE;
+
+  delete newData.cached_checks;
+  delete newData.cached_outagesCount;
+  delete newData.last_update;
+
   writeData(newData);
   res.json({ success: true });
 });

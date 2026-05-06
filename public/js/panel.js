@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("btn-logout").addEventListener("click", async () => {
-    await fetch("/api/logout", { method: "POST" });
+    await apiFetch("/api/logout", { method: "POST" });
     checkAuth();
   });
 
@@ -64,7 +64,7 @@ async function doLogin() {
     showToast("Password cannot be empty", "danger");
     return;
   }
-  const res = await fetch("/api/login", {
+  const res = await apiFetch("/api/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password }),
@@ -82,7 +82,7 @@ async function doSetup() {
     showToast("Password cannot be empty", "danger");
     return;
   }
-  const res = await fetch("/api/setup", {
+  const res = await apiFetch("/api/setup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password }),
@@ -96,7 +96,7 @@ async function doSetup() {
 }
 
 async function checkAuth() {
-  const res = await fetch("/api/checkAuth");
+  const res = await apiFetch("/api/checkAuth");
   const { loggedIn, needsSetup } = await res.json();
 
   const loginSection = document.getElementById("login-section");
@@ -132,7 +132,7 @@ async function checkAuth() {
 }
 
 async function loadAdminData() {
-  const res = await fetch("/api/data");
+  const res = await apiFetch("/api/data");
   if (!res.ok) return;
   const config = await res.json();
 
@@ -191,11 +191,11 @@ async function saveAll() {
     return;
   }
 
-  const res = await fetch("/api/data");
+  const res = await apiFetch("/api/data");
   const existing = await res.json();
   const updated = { ...existing, checks, outages, timezone: browserTimeZone };
 
-  const saveRes = await fetch("/api/data", {
+  const saveRes = await apiFetch("/api/data", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updated),
@@ -215,7 +215,7 @@ async function changePassword() {
     showToast("Password cannot be empty!", "warning");
     return;
   }
-  const res = await fetch("/api/password", {
+  const res = await apiFetch("/api/password", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ newPassword }),
@@ -311,4 +311,13 @@ function updateThemeIcon(btn) {
   const isDark =
     document.documentElement.getAttribute("data-bs-theme") === "dark";
   btn.querySelector("i").className = isDark ? "bi bi-sun" : "bi bi-moon";
+}
+
+async function apiFetch(input, init) {
+  const res = await fetch(input, init);
+  if (res.status === 401) {
+    window.location.reload();
+    throw new Error("Unauthorized");
+  }
+  return res;
 }

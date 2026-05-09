@@ -92,6 +92,7 @@ function createOutageRow(outage, sourceTimeZone) {
     ? startRelativeValue
     : startFullValue;
   startValueEl.style.cursor = "pointer";
+  startValueEl.title = startFullValue || '-';
   startValueEl.addEventListener("click", toggleTimeFormat);
   startCol.appendChild(startLabel);
   startCol.appendChild(startValueEl);
@@ -105,6 +106,7 @@ function createOutageRow(outage, sourceTimeZone) {
   endValueEl.className = "outage-date-value outage-date-value-clickable";
   endValueEl.textContent = showRelativeTime ? endRelativeValue : endFullValue;
   endValueEl.style.cursor = "pointer";
+  endValueEl.title = endFullValue || '-';
   endValueEl.addEventListener("click", toggleTimeFormat);
   endCol.appendChild(endLabel);
   endCol.appendChild(endValueEl);

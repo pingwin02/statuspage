@@ -32,11 +32,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("btn-add-outage").addEventListener("click", () => {
     const container = document.getElementById("edit-outages-list");
-    const now = new Date();
-    const tzOffset = now.getTimezoneOffset() * 60000;
-    const strDate = new Date(Date.now() - tzOffset).toISOString().slice(0, 16);
     container.appendChild(
-      createOutageEditRow({ date: strDate, endDate: "", text: "" }),
+      createOutageEditRow({
+        date: getCurrentDateTimeLocalValue(),
+        endDate: "",
+        text: "",
+      }),
     );
   });
 
@@ -173,8 +174,10 @@ async function saveAll() {
 
   const outageRows = document.querySelectorAll(".outage-edit-row");
   const outages = Array.from(outageRows).map((row) => ({
-    date: row.querySelector(".outage-date").value,
-    endDate: row.querySelector(".outage-end").value,
+    date: normalizeDateTimeLocalValue(row.querySelector(".outage-date").value),
+    endDate: normalizeDateTimeLocalValue(
+      row.querySelector(".outage-end").value,
+    ),
     text: row.querySelector(".outage-text").value,
   }));
 
@@ -270,8 +273,12 @@ function createOutageEditRow(outage) {
   const clone = tpl.content.cloneNode(true);
   const div = clone.querySelector(".outage-edit-row");
 
-  div.querySelector(".outage-date").value = outage.date || "";
-  div.querySelector(".outage-end").value = outage.endDate || "";
+  div.querySelector(".outage-date").value = normalizeDateTimeLocalValue(
+    outage.date,
+  );
+  div.querySelector(".outage-end").value = normalizeDateTimeLocalValue(
+    outage.endDate,
+  );
 
   const textarea = div.querySelector(".outage-text");
   textarea.value = outage.text || "";
@@ -283,6 +290,35 @@ function createOutageEditRow(outage) {
   });
 
   return div;
+}
+
+function getCurrentDateTimeLocalValue() {
+  const now = new Date();
+  const tzOffset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - tzOffset).toISOString().slice(0, 19);
+}
+
+function normalizeDateTimeLocalValue(value) {
+  if (!value) {
+    return "";
+  }
+
+  const normalizedValue = String(value).trim().replace(" ", "T");
+  const dateTimeMatch = normalizedValue.match(
+    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(?::(\d{2}))?/,
+  );
+
+  if (dateTimeMatch) {
+    return `${dateTimeMatch[1]}:${dateTimeMatch[2] || "00"}`;
+  }
+
+  const parsedDate = new Date(normalizedValue);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  const tzOffset = parsedDate.getTimezoneOffset() * 60000;
+  return new Date(parsedDate.getTime() - tzOffset).toISOString().slice(0, 19);
 }
 
 function autoResize(el) {

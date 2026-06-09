@@ -48,6 +48,10 @@ function formatRelativeTime(date) {
   const diff = date.getTime() - now.getTime();
   const absDiff = Math.abs(diff);
 
+  if (absDiff < 1000) {
+    return translations[currentLang].relative_time.now;
+  }
+
   const seconds = Math.floor(absDiff / 1000);
   const minutes = Math.floor(absDiff / (1000 * 60));
   const hours = Math.floor(absDiff / (1000 * 60 * 60));
@@ -57,14 +61,31 @@ function formatRelativeTime(date) {
   const tr = translations[currentLang].relative_time;
 
   const getPluralForm = (count, singular, few, many) => {
-    if (currentLang === "en") return many;
-    if (count === 1) return singular;
-    if (count < 5) return few;
+    if (currentLang === "en") {
+      return count === 1 ? singular : many;
+    }
+
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+
+    if (mod10 === 1 && mod100 !== 11) return singular;
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return few;
+    }
+
     return many;
   };
 
   if (seconds < 60) {
-    return isFuture ? tr.justNow.future : tr.justNow.past;
+    const s = getPluralForm(
+      seconds,
+      tr.second.singular,
+      tr.second.few,
+      tr.second.many,
+    );
+    return isFuture
+      ? `${tr.futurePrefix}${seconds} ${s}`
+      : `${seconds} ${s}${tr.pastSuffix}`;
   } else if (minutes < 60) {
     const m = getPluralForm(
       minutes,

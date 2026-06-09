@@ -9,6 +9,7 @@ A lightweight and secure status page and administration dashboard. Designed to r
 - **Secure Admin Panel:** Bcrypt hashed passwords, secure sessions.
 - **Flat-file JSON Storage:** Zero databases—all data in `data/config.json`.
 - **Timezone-aware Display:** Visitor timezone conversion with timezone labels.
+- **Live Relative Timestamps:** Relative outage timestamps update automatically every second without reloading the page.
 - **Bootstrap 5 Dark UI:** Responsive, beautiful dark mode.
 - **Localization:** English / Polish language toggle.
 

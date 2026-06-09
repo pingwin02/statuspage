@@ -1,3 +1,43 @@
+const RELATIVE_OUTAGE_REFRESH_INTERVAL_MS = 1000;
+
+let outageRelativeRefreshId = null;
+
+function ensureOutageRelativeRefresh() {
+  if (outageRelativeRefreshId !== null) {
+    return;
+  }
+
+  outageRelativeRefreshId = window.setInterval(() => {
+    if (document.hidden || !showRelativeTime) {
+      return;
+    }
+
+    refreshOutageRelativeTimes();
+  }, RELATIVE_OUTAGE_REFRESH_INTERVAL_MS);
+}
+
+function refreshOutageRelativeTimes() {
+  document
+    .querySelectorAll("[data-relative-outage-time]")
+    .forEach((element) => {
+      const isoDate = element.dataset.relativeOutageTime;
+      const fullValue = element.dataset.fullValue || "-";
+
+      if (!isoDate) {
+        element.textContent = fullValue;
+        element.title = fullValue;
+        return;
+      }
+
+      const date = new Date(isoDate);
+      const hasValidDate = !Number.isNaN(date.getTime());
+
+      element.textContent =
+        showRelativeTime && hasValidDate ? formatRelativeTime(date) : fullValue;
+      element.title = fullValue;
+    });
+}
+
 function renderOutages(outages, sourceTimeZone) {
   lastOutagesData = outages;
   lastSourceTimeZone = sourceTimeZone;
@@ -33,6 +73,7 @@ function renderOutages(outages, sourceTimeZone) {
   }
 
   container.classList.remove("d-none");
+  ensureOutageRelativeRefresh();
 
   const activeDiv = document.getElementById("active-outages");
   const activeTable = document.getElementById("outages-table");
@@ -88,6 +129,10 @@ function createOutageRow(outage, sourceTimeZone) {
   startLabel.textContent = t("outage_start");
   const startValueEl = document.createElement("div");
   startValueEl.className = "outage-date-value outage-date-value-clickable";
+  startValueEl.dataset.fullValue = startFullValue || outage.date;
+  if (startDate) {
+    startValueEl.dataset.relativeOutageTime = startDate.toISOString();
+  }
   startValueEl.textContent = showRelativeTime
     ? startRelativeValue
     : startFullValue;
@@ -104,6 +149,10 @@ function createOutageRow(outage, sourceTimeZone) {
   endLabel.textContent = t("outage_expected_end");
   const endValueEl = document.createElement("div");
   endValueEl.className = "outage-date-value outage-date-value-clickable";
+  endValueEl.dataset.fullValue = endFullValue || "-";
+  if (endDate) {
+    endValueEl.dataset.relativeOutageTime = endDate.toISOString();
+  }
   endValueEl.textContent = showRelativeTime ? endRelativeValue : endFullValue;
   endValueEl.style.cursor = "pointer";
   endValueEl.title = endFullValue || "-";
@@ -127,8 +176,5 @@ function createOutageRow(outage, sourceTimeZone) {
 function toggleTimeFormat(e) {
   e.stopPropagation();
   showRelativeTime = !showRelativeTime;
-
-  if (lastOutagesData.length) {
-    renderOutages(lastOutagesData, lastSourceTimeZone);
-  }
+  refreshOutageRelativeTimes();
 }

@@ -19,7 +19,8 @@ const translations = {
     rate_limit_error:
       "Zbyt częste odświeżanie. Odczekaj chwilę przed kolejnym odświeżeniem.",
     relative_time: {
-      justNow: { future: "za chwilę", past: "przed chwilą" },
+      now: "w tej chwili",
+      second: { singular: "sekundę", few: "sekundy", many: "sekund" },
       minute: { singular: "minutę", few: "minuty", many: "minut" },
       hour: { singular: "godzinę", few: "godziny", many: "godzin" },
       day: { singular: "dzień", few: "dni", many: "dni" },
@@ -47,7 +48,8 @@ const translations = {
     rate_limit_error:
       "Refreshing too fast. Please wait a moment before refreshing again.",
     relative_time: {
-      justNow: { future: "in a moment", past: "just now" },
+      now: "right now",
+      second: { singular: "second", few: "seconds", many: "seconds" },
       minute: { singular: "minute", few: "minutes", many: "minutes" },
       hour: { singular: "hour", few: "hours", many: "hours" },
       day: { singular: "day", few: "days", many: "days" },

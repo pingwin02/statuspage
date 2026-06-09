@@ -36,15 +36,20 @@
         </div>
       </div>
 
+      <div id="last-update-container" class="d-flex justify-content-end mb-2">
+        <a href="/panel" class="text-muted small text-end" id="last-update"></a>
+      </div>
+
       <div id="overall-status">
-        <div class="alert alert-secondary" data-i18n="loading">
+        <div class="alert alert-secondary mb-0" data-i18n="loading">
           Ładowanie statusów...
         </div>
       </div>
 
-      <h2 class="h5 mt-4" data-i18n="services">Usługi</h2>
+      <h2 id="services-heading" class="h5 mt-4 d-none" data-i18n="services">
+        Usługi
+      </h2>
       <ul id="services-list" class="list-group mb-3"></ul>
-      <a href="/panel" class="text-muted small d-block" id="last-update"></a>
 
       <div id="outages-container" class="d-none">
         <h2 class="h5 mt-4" data-i18n="outages_section">Awarie</h2>

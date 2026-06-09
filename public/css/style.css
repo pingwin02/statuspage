@@ -8,6 +8,7 @@
 }
 
 #last-update {
+  display: inline-block;
   text-decoration: none;
 }
 

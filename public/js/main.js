@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
     currentLang = "en";
   }
   applyTranslations();
+  initializeLoadingState();
 
   const langBtn = document.getElementById("btn-lang");
   langBtn.textContent = currentLang === "pl" ? "EN" : "PL";
@@ -16,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("lang", currentLang);
     langBtn.textContent = currentLang === "pl" ? "EN" : "PL";
     applyTranslations();
+    renderLastUpdateLink();
     loadStatus(false);
   });
 

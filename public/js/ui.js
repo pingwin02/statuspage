@@ -43,6 +43,35 @@ function showToast(message, type = "danger") {
   toastEl.addEventListener("hidden.bs.toast", () => toastEl.remove());
 }
 
+function setServicesHeadingVisible(isVisible) {
+  const heading = document.getElementById("services-heading");
+  if (!heading) return;
+  heading.classList.toggle("d-none", !isVisible);
+}
+
+function renderLastUpdateLink(lastUpdate = null) {
+  const link = document.getElementById("last-update");
+  if (!link) return;
+
+  if (!lastUpdate) {
+    link.textContent = `${t("last_update")} ${t("loading_short")}`;
+    return;
+  }
+
+  const date = new Date(Number(lastUpdate));
+  if (Number.isNaN(date.getTime())) {
+    link.textContent = `${t("last_update")} ${t("loading_short")}`;
+    return;
+  }
+
+  link.textContent = `${t("last_update")} ${formatDateTimeWithSeconds(date, browserTimeZone)}`;
+}
+
+function initializeLoadingState() {
+  setServicesHeadingVisible(false);
+  renderLastUpdateLink();
+}
+
 async function loadStatus(force = false) {
   const res = await fetch(`/api/status${force ? "?force=true" : ""}`);
 
@@ -66,10 +95,9 @@ async function loadStatus(force = false) {
   overall.appendChild(alert);
 
   renderServices(data.checks);
+  setServicesHeadingVisible(true);
 
-  const d = data.last_update ? new Date(data.last_update) : new Date();
-  document.getElementById("last-update").textContent =
-    `${t("last_update")} ${formatDateTimeWithSeconds(d, browserTimeZone)}`;
+  renderLastUpdateLink(data.last_update);
 
   renderOutages(data.outages || [], data.timezone || browserTimeZone);
 }

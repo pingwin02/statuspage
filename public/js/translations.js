@@ -15,6 +15,7 @@ const translations = {
     last_update: "Ostatnia aktualizacja:",
     outage_start: "Początek awarii",
     outage_expected_end: "Przewidywany koniec",
+    outage_end: "Koniec awarii",
     others: "Inne",
     rate_limit_error:
       "Zbyt częste odświeżanie. Odczekaj chwilę przed kolejnym odświeżeniem.",
@@ -44,6 +45,7 @@ const translations = {
     last_update: "Last update:",
     outage_start: "Outage start",
     outage_expected_end: "Expected end",
+    outage_end: "Outage end",
     others: "Other",
     rate_limit_error:
       "Refreshing too fast. Please wait a moment before refreshing again.",

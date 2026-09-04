@@ -40,7 +40,7 @@ A lightweight and secure status page and administration dashboard. Designed to r
 4. **Adding Checks:** Inside the admin panel, you can add new hosts. Choose between HTTP, Ping, Port, or Manual check types.
    - For **Port** checks, input the host and port separated by a space (e.g., `localhost 3306`).
    - For **HTTP** checks, input the full URL (e.g., `https://example.com`).
-5. **Adding Outages:** You can describe ongoing issues or track resolved ones. Setting an "End date" will automatically move the outage to the "Archive" tab once the date passes.
+5. **Adding Outages:** You can describe ongoing issues or track resolved ones. Setting an "End date" displays as an expected end for active outages, or as the outage end once the date passes (moving the outage to the "Archive" tab).
    - Outage timestamps are stored with the config timezone and shown on the public page in the visitor's timezone.
 
 ## License

@@ -36,6 +36,17 @@ function refreshOutageRelativeTimes() {
         showRelativeTime && hasValidDate ? formatRelativeTime(date) : fullValue;
       element.title = fullValue;
     });
+
+  document.querySelectorAll("[data-end-label-date]").forEach((element) => {
+    const isoDate = element.dataset.endLabelDate;
+    const date = new Date(isoDate);
+    if (!Number.isNaN(date.getTime())) {
+      const isEnded = date < new Date();
+      element.textContent = isEnded
+        ? t("outage_end")
+        : t("outage_expected_end");
+    }
+  });
 }
 
 function renderOutages(outages, sourceTimeZone) {
@@ -119,6 +130,8 @@ function createOutageRow(outage, sourceTimeZone) {
     : outage.date;
   const endRelativeValue = endDate ? formatRelativeTime(endDate) : "-";
 
+  const isEnded = Boolean(endDate && endDate < new Date());
+
   const datesContainer = document.createElement("div");
   datesContainer.className = "outage-dates-grid";
 
@@ -146,7 +159,10 @@ function createOutageRow(outage, sourceTimeZone) {
   endCol.className = "outage-date-col outage-date-col-end";
   const endLabel = document.createElement("div");
   endLabel.className = "outage-date-label";
-  endLabel.textContent = t("outage_expected_end");
+  if (endDate) {
+    endLabel.dataset.endLabelDate = endDate.toISOString();
+  }
+  endLabel.textContent = isEnded ? t("outage_end") : t("outage_expected_end");
   const endValueEl = document.createElement("div");
   endValueEl.className = "outage-date-value outage-date-value-clickable";
   endValueEl.dataset.fullValue = endFullValue || "-";

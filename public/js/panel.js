@@ -216,8 +216,7 @@ async function saveAll() {
   });
 
   if (saveRes.ok) {
-    showToast("Saved successfully!", "success");
-    loadAdminData();
+    window.location.href = "/";
   } else {
     showToast("An error occurred", "danger");
   }

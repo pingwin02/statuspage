@@ -210,26 +210,37 @@ function cancelCurrentRefresh() {
   activeChecks = null;
 }
 
+function getInitialCheckState(item) {
+  const isManual = item.type === "manual";
+  const manualUp = item.manual_status === "up";
+  return {
+    group: item.group,
+    name: item.name,
+    type: item.type || "http",
+    status: isManual ? (manualUp ? "success" : "failed") : "checking",
+    url: item.host || "",
+    is_checking: !isManual,
+  };
+}
+
 async function executeChecks(checks, signal) {
   const total = (checks || []).length;
   let completed = 0;
-  activeChecks = (checks || []).map((item) => ({
-    group: item.group,
-    name: item.name,
-    status: "checking",
-    url: item.host || "",
-    is_checking: true,
-  }));
-  activeOutagesCount = 0;
+  activeChecks = (checks || []).map(getInitialCheckState);
+  activeOutagesCount = activeChecks.filter((c) => c.status === "failed").length;
 
   const checkPromises = (checks || []).map(async (item, index) => {
     if (signal?.aborted) return null;
-    const isUp = await runCheck(item, signal);
+    const isUp =
+      item.type === "manual"
+        ? item.manual_status === "up"
+        : await runCheck(item, signal);
     if (signal?.aborted) return null;
 
     const result = {
       group: item.group,
       name: item.name,
+      type: item.type || "http",
       status: isUp ? "success" : "failed",
       url: item.host || "",
       is_checking: false,
@@ -284,13 +295,8 @@ function triggerBackgroundRefresh() {
   const currentSignal = refreshAbortController.signal;
 
   const initialData = readData();
-  activeChecks = (initialData.checks || []).map((item) => ({
-    group: item.group,
-    name: item.name,
-    status: "checking",
-    url: item.host || "",
-    is_checking: true,
-  }));
+  activeChecks = (initialData.checks || []).map(getInitialCheckState);
+  activeOutagesCount = activeChecks.filter((c) => c.status === "failed").length;
 
   refreshPromise = (async () => {
     try {

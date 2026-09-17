@@ -76,10 +76,14 @@ let statusEventSource = null;
 let lastRenderedChecks = [];
 
 function setBadgesLoading() {
-  document.querySelectorAll("#services-list .badge").forEach((badge) => {
-    badge.className = "badge bg-secondary";
-    badge.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="width: 0.75rem; height: 0.75rem;"></span>${t("loading_short")}`;
-  });
+  document
+    .querySelectorAll(
+      "#services-list li:not([data-check-type='manual']) .badge",
+    )
+    .forEach((badge) => {
+      badge.className = "badge bg-secondary";
+      badge.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="width: 0.75rem; height: 0.75rem;"></span>${t("loading_short")}`;
+    });
 }
 
 function applyCheckBadge(badge, check) {
@@ -101,6 +105,9 @@ function updateSingleServiceCheck(check, outagesCount) {
     `[data-service-key="${check.group}:${check.name}"]`,
   );
   if (li) {
+    if (check.type) {
+      li.setAttribute("data-check-type", check.type);
+    }
     const badge = li.querySelector(".badge");
     if (badge) {
       applyCheckBadge(badge, check);
@@ -186,8 +193,8 @@ async function loadStatus() {
     if (data.cached) {
       const loadingChecks = (data.checks || []).map((c) => ({
         ...c,
-        is_checking: true,
-        status: "checking",
+        is_checking: c.type === "manual" ? false : true,
+        status: c.type === "manual" ? c.status : "checking",
       }));
       renderServices(loadingChecks);
       setServicesHeadingVisible(true);
@@ -239,6 +246,9 @@ function renderServices(checks) {
       const badge = item.querySelector(".badge");
 
       li.setAttribute("data-service-key", `${check.group}:${check.name}`);
+      if (check.type) {
+        li.setAttribute("data-check-type", check.type);
+      }
 
       if (check.url) {
         const link = document.createElement("a");

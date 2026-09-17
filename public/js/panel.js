@@ -23,9 +23,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("btn-add-check").addEventListener("click", () => {
     const container = document.getElementById("edit-checks-list");
+    const lastRow = container.querySelector(".check-edit-row:last-child");
+    const lastGroup = lastRow
+      ? lastRow.querySelector(".check-group").value
+      : "";
     container.appendChild(
-      createCheckEditRow({ group: "", type: "http", name: "", host: "" }),
+      createCheckEditRow({
+        group: lastGroup,
+        type: "http",
+        name: "",
+        host: "",
+      }),
     );
+    updateGroupOptions();
   });
 
   document.getElementById("btn-save-all").addEventListener("click", saveAll);
@@ -142,6 +152,7 @@ async function loadAdminData() {
   (config.checks || []).forEach((check) => {
     checksList.appendChild(createCheckEditRow(check));
   });
+  updateGroupOptions();
   new Sortable(checksList, { handle: ".drag-handle", animation: 150 });
 
   const outagesList = document.getElementById("edit-outages-list");
@@ -236,7 +247,10 @@ function createCheckEditRow(check) {
   const clone = tpl.content.cloneNode(true);
   const div = clone.querySelector(".check-edit-row");
 
-  div.querySelector(".check-group").value = check.group || "";
+  const groupInput = div.querySelector(".check-group");
+  groupInput.value = check.group || "";
+  groupInput.addEventListener("input", updateGroupOptions);
+
   div.querySelector(".check-type").value = check.type || "http";
   div.querySelector(".check-name").value = check.name || "";
   div.querySelector(".check-host").value = check.host || "";
@@ -263,9 +277,60 @@ function createCheckEditRow(check) {
 
   div.querySelector(".btn-remove-row").addEventListener("click", () => {
     div.remove();
+    updateGroupOptions();
   });
 
   return div;
+}
+
+function updateGroupOptions() {
+  const inputs = document.querySelectorAll(".check-group");
+  const groups = Array.from(
+    new Set(Array.from(inputs).map((i) => i.value.trim())),
+  )
+    .filter(Boolean)
+    .sort();
+
+  const datalist = document.getElementById("groups-datalist");
+  if (datalist) {
+    datalist.innerHTML = "";
+    groups.forEach((g) => {
+      const opt = document.createElement("option");
+      opt.value = g;
+      datalist.appendChild(opt);
+    });
+  }
+
+  document.querySelectorAll(".check-edit-row").forEach((row) => {
+    const menu = row.querySelector(".groups-dropdown-menu");
+    const input = row.querySelector(".check-group");
+    if (!menu || !input) return;
+    menu.innerHTML = "";
+
+    if (groups.length === 0) {
+      const li = document.createElement("li");
+      const span = document.createElement("span");
+      span.className = "dropdown-item text-muted disabled small";
+      span.textContent = "No groups yet";
+      li.appendChild(span);
+      menu.appendChild(li);
+      return;
+    }
+
+    groups.forEach((g) => {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "dropdown-item small";
+      btn.textContent = g;
+      btn.addEventListener("click", () => {
+        input.value = g;
+        updateGroupOptions();
+      });
+      li.appendChild(btn);
+      menu.appendChild(li);
+    });
+  });
 }
 
 function createOutageEditRow(outage) {

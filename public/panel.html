@@ -140,6 +140,8 @@
       </div>
     </template>
 
+    <datalist id="groups-datalist"></datalist>
+
     <template id="tpl-check-row">
       <div class="check-edit-row card card-body py-2 mb-2">
         <div class="d-flex gap-2 align-items-center">
@@ -147,13 +149,26 @@
             class="bi bi-grip-vertical drag-handle fs-5 text-muted flex-shrink-0"
           ></i>
           <div class="row g-2 flex-grow-1">
-            <div class="col-6 col-sm-2">
+            <div class="col-6 col-sm-3 col-md-2">
               <label class="form-label small mb-0">Group</label>
-              <input
-                type="text"
-                class="form-control form-control-sm check-group"
-                placeholder="Group"
-              />
+              <div class="input-group input-group-sm">
+                <input
+                  type="text"
+                  class="form-control check-group"
+                  list="groups-datalist"
+                  placeholder="Group"
+                />
+                <button
+                  class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+                  type="button"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  tabindex="-1"
+                ></button>
+                <ul
+                  class="dropdown-menu dropdown-menu-end groups-dropdown-menu"
+                ></ul>
+              </div>
             </div>
             <div class="col-6 col-sm-2">
               <label class="form-label small mb-0">Type</label>

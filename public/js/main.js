@@ -18,18 +18,15 @@ document.addEventListener("DOMContentLoaded", () => {
     langBtn.textContent = currentLang === "pl" ? "EN" : "PL";
     applyTranslations();
     renderLastUpdateLink();
-    loadStatus(false);
+    loadStatus();
   });
 
-  loadStatus(false);
+  connectStatusStream();
+  loadStatus();
 
-  document.getElementById("btn-refresh").addEventListener("click", () => {
-    const overall = document.getElementById("overall-status");
-    overall.innerHTML = "";
-    const alert = document.createElement("div");
-    alert.className = "alert alert-secondary";
-    alert.textContent = t("checking");
-    overall.appendChild(alert);
-    loadStatus(true);
+  const refreshBtn = document.getElementById("btn-refresh");
+  refreshBtn.addEventListener("click", () => {
+    setBadgesLoading();
+    loadStatus();
   });
 });

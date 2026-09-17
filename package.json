@@ -19,6 +19,6 @@
     "express-session": "^1.19.0"
   },
   "devDependencies": {
-    "prettier": "^3.9.6"
+    "prettier": "^3.9.7"
   }
 }

@@ -72,34 +72,146 @@ function initializeLoadingState() {
   renderLastUpdateLink();
 }
 
-async function loadStatus(force = false) {
-  const res = await fetch(`/api/status${force ? "?force=true" : ""}`);
+let statusEventSource = null;
+let lastRenderedChecks = [];
 
-  if (res.status === 429) {
-    showToast(t("rate_limit_error"), "danger");
-    return loadStatus(false);
+function setBadgesLoading() {
+  document.querySelectorAll("#services-list .badge").forEach((badge) => {
+    badge.className = "badge bg-secondary";
+    badge.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="width: 0.75rem; height: 0.75rem;"></span>${t("loading_short")}`;
+  });
+}
+
+function applyCheckBadge(badge, check) {
+  badge.className = "badge";
+  if (check.is_checking || check.status === "checking") {
+    badge.classList.add("bg-secondary");
+    badge.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="width: 0.75rem; height: 0.75rem;"></span>${t("loading_short")}`;
+  } else if (check.status === "success") {
+    badge.classList.add("bg-success");
+    badge.textContent = t("is_up");
+  } else {
+    badge.classList.add("bg-danger");
+    badge.textContent = t("is_down");
+  }
+}
+
+function updateSingleServiceCheck(check, outagesCount) {
+  const li = document.querySelector(
+    `[data-service-key="${check.group}:${check.name}"]`,
+  );
+  if (li) {
+    const badge = li.querySelector(".badge");
+    if (badge) {
+      applyCheckBadge(badge, check);
+    }
   }
 
-  const data = await res.json();
-  updateFavicon(data.outagesCount > 0);
+  if (typeof outagesCount === "number") {
+    updateFavicon(outagesCount > 0);
+  }
+}
 
-  const overall = document.getElementById("overall-status");
-  overall.innerHTML = "";
-  const alert = document.createElement("div");
-  alert.className =
-    data.outagesCount === 0 ? "alert alert-success" : "alert alert-danger";
-  alert.textContent =
-    data.outagesCount === 0
-      ? t("all_good")
-      : `${t("outages")} ${data.outagesCount}`;
-  overall.appendChild(alert);
+function setRefreshButtonDisabled(disabled) {
+  const btn = document.getElementById("btn-refresh");
+  if (btn) {
+    btn.disabled = disabled;
+  }
+}
 
-  renderServices(data.checks);
-  setServicesHeadingVisible(true);
+function connectStatusStream() {
+  if (statusEventSource) {
+    statusEventSource.close();
+    statusEventSource = null;
+  }
 
-  renderLastUpdateLink(data.last_update);
+  if (typeof EventSource === "undefined") {
+    return;
+  }
 
-  renderOutages(data.outages || [], data.timezone || browserTimeZone);
+  statusEventSource = new EventSource("/api/status/stream");
+
+  statusEventSource.addEventListener("init", (e) => {
+    const data = JSON.parse(e.data);
+    updateFavicon(data.outagesCount > 0);
+    if (data.is_refreshing) {
+      lastRenderedChecks = data.checks || [];
+      renderServices(data.checks);
+      setServicesHeadingVisible(true);
+      renderLastUpdateLink(data.last_update);
+      renderOutages(data.outages || [], data.timezone || browserTimeZone);
+      setRefreshButtonDisabled(true);
+    }
+  });
+
+  statusEventSource.addEventListener("refresh_started", () => {
+    setRefreshButtonDisabled(true);
+    renderLastUpdateLink(0);
+  });
+
+  statusEventSource.addEventListener("check_updated", (e) => {
+    const data = JSON.parse(e.data);
+    updateSingleServiceCheck(data.check, data.outagesCount);
+  });
+
+  statusEventSource.addEventListener("done", (e) => {
+    const data = JSON.parse(e.data);
+    renderLastUpdateLink(data.last_update);
+    if (Array.isArray(data.checks)) {
+      lastRenderedChecks = data.checks;
+      renderServices(data.checks);
+    }
+    setRefreshButtonDisabled(false);
+  });
+
+  statusEventSource.onerror = () => {
+    statusEventSource.close();
+    statusEventSource = null;
+  };
+}
+
+async function loadStatus() {
+  try {
+    const res = await fetch("/api/status");
+    if (!res.ok) {
+      if (lastRenderedChecks.length > 0) {
+        renderServices(lastRenderedChecks);
+      }
+      return;
+    }
+
+    const data = await res.json();
+    updateFavicon(data.outagesCount > 0);
+
+    if (data.cached) {
+      const loadingChecks = (data.checks || []).map((c) => ({
+        ...c,
+        is_checking: true,
+        status: "checking",
+      }));
+      renderServices(loadingChecks);
+      setServicesHeadingVisible(true);
+      renderLastUpdateLink(data.last_update);
+      renderOutages(data.outages || [], data.timezone || browserTimeZone);
+      setRefreshButtonDisabled(false);
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      lastRenderedChecks = data.checks || [];
+      renderServices(data.checks);
+    } else {
+      lastRenderedChecks = data.checks || [];
+      renderServices(data.checks);
+      setServicesHeadingVisible(true);
+      renderLastUpdateLink(data.last_update);
+      renderOutages(data.outages || [], data.timezone || browserTimeZone);
+      setRefreshButtonDisabled(!!data.is_refreshing);
+    }
+  } catch {
+    if (lastRenderedChecks.length > 0) {
+      renderServices(lastRenderedChecks);
+    }
+  }
 }
 
 function renderServices(checks) {
@@ -109,7 +221,7 @@ function renderServices(checks) {
   list.innerHTML = "";
 
   const grouped = {};
-  checks.forEach((check) => {
+  (checks || []).forEach((check) => {
     const gName = check.group || t("others");
     if (!grouped[gName]) grouped[gName] = [];
     grouped[gName].push(check);
@@ -122,8 +234,11 @@ function renderServices(checks) {
 
     grouped[gName].forEach((check) => {
       const item = itemTpl.content.cloneNode(true);
+      const li = item.querySelector("li");
       const nameSpan = item.querySelector(".service-name");
       const badge = item.querySelector(".badge");
+
+      li.setAttribute("data-service-key", `${check.group}:${check.name}`);
 
       if (check.url) {
         const link = document.createElement("a");
@@ -136,9 +251,7 @@ function renderServices(checks) {
         nameSpan.textContent = check.name;
       }
 
-      const isUp = check.status === "success";
-      badge.classList.add(isUp ? "bg-success" : "bg-danger");
-      badge.textContent = isUp ? t("is_up") : t("is_down");
+      applyCheckBadge(badge, check);
 
       list.appendChild(item);
     });

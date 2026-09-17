@@ -3,14 +3,18 @@ const session = require("express-session");
 const bodyParser = require("body-parser");
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
+const { exec } = require("child_process");
+const { EventEmitter } = require("events");
+const util = require("util");
 const bcrypt = require("bcrypt");
+
+const execAsync = util.promisify(exec);
+const statusEmitter = new EventEmitter();
 
 const app = express();
 const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "config.json");
 const CACHE_TIME = 5 * 60 * 1000;
-const RATE_LIMIT = 30000;
 const DEFAULT_TIMEZONE =
   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
@@ -29,6 +33,7 @@ app.use(
 );
 
 app.get("/panel", (req, res) => {
+  cancelCurrentRefresh();
   res.sendFile(path.join(__dirname, "public", "panel.html"));
 });
 
@@ -132,15 +137,18 @@ app.get("/api/checkAuth", (req, res) => {
   res.json({ loggedIn: !!req.session.loggedIn, needsSetup: !data.password });
 });
 
-// --- Status check logic ---
-
-async function runCheck(item) {
+async function runCheck(item, signal) {
   if (item.type === "manual") {
     return item.manual_status === "up";
   }
 
   if (item.type === "http") {
+    if (signal?.aborted) return false;
     const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    if (signal) {
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
     const timeoutId = setTimeout(() => controller.abort(), 10000);
     try {
       const response = await fetch(item.host, {
@@ -149,15 +157,23 @@ async function runCheck(item) {
         headers: { "User-Agent": "StatusPage/1.0" },
       });
       clearTimeout(timeoutId);
+      if (signal) {
+        signal.removeEventListener("abort", onAbort);
+      }
       return response.status === 200;
     } catch {
+      clearTimeout(timeoutId);
+      if (signal) {
+        signal.removeEventListener("abort", onAbort);
+      }
       return false;
     }
   }
 
   if (item.type === "ping") {
+    if (signal?.aborted) return false;
     try {
-      execSync(`ping -c 1 -W 5 ${item.host}`, { stdio: "ignore" });
+      await execAsync(`ping -c 1 -W 5 ${item.host}`, { signal });
       return true;
     } catch {
       return false;
@@ -165,9 +181,10 @@ async function runCheck(item) {
   }
 
   if (item.type === "port") {
+    if (signal?.aborted) return false;
     try {
       const parts = item.host.split(" ");
-      execSync(`nc -z -w 5 ${parts[0]} ${parts[1]}`, { stdio: "ignore" });
+      await execAsync(`nc -z -w 5 ${parts[0]} ${parts[1]}`, { signal });
       return true;
     } catch {
       return false;
@@ -177,62 +194,231 @@ async function runCheck(item) {
   return false;
 }
 
-app.get("/api/status", async (req, res) => {
-  const data = readData();
-  const forceRefresh = req.query.force === "true";
-  const now = Date.now();
+let isRefreshing = false;
+let refreshAbortController = null;
+let refreshPromise = null;
+let activeChecks = null;
+let activeOutagesCount = 0;
 
-  if (forceRefresh && data.last_update && now - data.last_update < RATE_LIMIT) {
-    return res.status(429).json({ error: "Too many requests" });
+function cancelCurrentRefresh() {
+  if (refreshAbortController) {
+    refreshAbortController.abort();
+    refreshAbortController = null;
   }
+  isRefreshing = false;
+  refreshPromise = null;
+  activeChecks = null;
+}
 
-  if (
-    !forceRefresh &&
-    data.last_update &&
-    now - data.last_update < CACHE_TIME &&
-    data.cached_checks
-  ) {
-    return res.json({
-      checks: data.cached_checks,
-      outages: data.outages || [],
-      outagesCount: data.cached_outagesCount,
-      last_update: data.last_update,
-      timezone: data.timezone || DEFAULT_TIMEZONE,
-    });
+async function executeChecks(checks, signal) {
+  const total = (checks || []).length;
+  let completed = 0;
+  activeChecks = (checks || []).map((item) => ({
+    group: item.group,
+    name: item.name,
+    status: "checking",
+    url: item.host || "",
+    is_checking: true,
+  }));
+  activeOutagesCount = 0;
+
+  const checkPromises = (checks || []).map(async (item, index) => {
+    if (signal?.aborted) return null;
+    const isUp = await runCheck(item, signal);
+    if (signal?.aborted) return null;
+
+    const result = {
+      group: item.group,
+      name: item.name,
+      status: isUp ? "success" : "failed",
+      url: item.host || "",
+      is_checking: false,
+    };
+
+    if (activeChecks) {
+      activeChecks[index] = result;
+      completed++;
+      activeOutagesCount = activeChecks.filter(
+        (c) => c.status === "failed",
+      ).length;
+
+      statusEmitter.emit("check_updated", {
+        index,
+        check: result,
+        outagesCount: activeOutagesCount,
+        completed,
+        total,
+      });
+    }
+
+    return { isUp, result };
+  });
+
+  const resolved = await Promise.all(checkPromises);
+  if (signal?.aborted) {
+    return null;
   }
 
   const results = [];
   let outagesCount = 0;
 
-  for (const item of data.checks || []) {
-    const isUp = await runCheck(item);
-    if (!isUp) outagesCount++;
+  for (const entry of resolved) {
+    if (!entry) continue;
+    if (!entry.isUp) outagesCount++;
+    results.push(entry.result);
+  }
 
-    results.push({
-      group: item.group,
-      name: item.name,
-      status: isUp ? "success" : "failed",
-      url: item.host || "",
+  activeChecks = results;
+  activeOutagesCount = outagesCount;
+
+  return { results, outagesCount };
+}
+
+function triggerBackgroundRefresh() {
+  if (isRefreshing) {
+    return refreshPromise;
+  }
+
+  isRefreshing = true;
+  refreshAbortController = new AbortController();
+  const currentSignal = refreshAbortController.signal;
+
+  const initialData = readData();
+  activeChecks = (initialData.checks || []).map((item) => ({
+    group: item.group,
+    name: item.name,
+    status: "checking",
+    url: item.host || "",
+    is_checking: true,
+  }));
+
+  refreshPromise = (async () => {
+    try {
+      const dataAtStart = readData();
+      statusEmitter.emit("refresh_started", {
+        total: (dataAtStart.checks || []).length,
+      });
+
+      const outcome = await executeChecks(dataAtStart.checks, currentSignal);
+      if (currentSignal.aborted || !outcome) {
+        return;
+      }
+
+      const { results, outagesCount } = outcome;
+      const currentData = readData();
+      currentData.cached_checks = results;
+      currentData.cached_outagesCount = outagesCount;
+      currentData.last_update = Date.now();
+      writeData(currentData);
+
+      statusEmitter.emit("done", {
+        checks: results,
+        outagesCount,
+        last_update: currentData.last_update,
+      });
+    } catch {
+    } finally {
+      if (refreshAbortController?.signal === currentSignal) {
+        refreshAbortController = null;
+        isRefreshing = false;
+        refreshPromise = null;
+        activeChecks = null;
+      }
+    }
+  })();
+
+  return refreshPromise;
+}
+
+app.get("/api/status/stream", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const send = (event, data) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const currentData = readData();
+  const checksToSend =
+    isRefreshing && activeChecks
+      ? activeChecks
+      : currentData.cached_checks || [];
+  const countToSend = isRefreshing
+    ? activeOutagesCount
+    : currentData.cached_outagesCount || 0;
+
+  send("init", {
+    checks: checksToSend,
+    outages: currentData.outages || [],
+    outagesCount: countToSend,
+    last_update: currentData.last_update,
+    timezone: currentData.timezone || DEFAULT_TIMEZONE,
+    is_refreshing: isRefreshing,
+  });
+
+  const onCheckUpdated = (data) => send("check_updated", data);
+  const onDone = (data) => send("done", data);
+  const onStarted = (data) => send("refresh_started", data);
+
+  statusEmitter.on("check_updated", onCheckUpdated);
+  statusEmitter.on("done", onDone);
+  statusEmitter.on("refresh_started", onStarted);
+
+  req.on("close", () => {
+    statusEmitter.off("check_updated", onCheckUpdated);
+    statusEmitter.off("done", onDone);
+    statusEmitter.off("refresh_started", onStarted);
+  });
+});
+
+app.get("/api/status", async (req, res) => {
+  const data = readData();
+  const now = Date.now();
+
+  const isCacheExpired =
+    !data.last_update || now - data.last_update >= CACHE_TIME;
+
+  const hasCachedChecks =
+    Array.isArray(data.cached_checks) &&
+    (data.cached_checks.length > 0 || (data.checks || []).length === 0);
+
+  if (isCacheExpired && !isRefreshing) {
+    triggerBackgroundRefresh();
+  }
+
+  const checksToSend =
+    isRefreshing && activeChecks ? activeChecks : data.cached_checks || [];
+  const countToSend = isRefreshing
+    ? activeOutagesCount
+    : data.cached_outagesCount || 0;
+
+  if (hasCachedChecks && !isRefreshing) {
+    return res.json({
+      cached: true,
+      is_refreshing: false,
+      checks: checksToSend,
+      outages: data.outages || [],
+      outagesCount: countToSend,
+      last_update: data.last_update,
+      timezone: data.timezone || DEFAULT_TIMEZONE,
     });
   }
 
-  data.cached_checks = results;
-  data.cached_outagesCount = outagesCount;
-  data.last_update = now;
-  writeData(data);
-
-  res.json({
-    checks: results,
+  return res.json({
+    cached: false,
+    is_refreshing: isRefreshing,
+    checks: checksToSend,
     outages: data.outages || [],
-    outagesCount,
-    last_update: now,
+    outagesCount: countToSend,
+    last_update: isRefreshing ? 0 : data.last_update,
     timezone: data.timezone || DEFAULT_TIMEZONE,
   });
 });
 
-// --- Admin data routes ---
-
 app.get("/api/data", ensureAuth, (req, res) => {
+  cancelCurrentRefresh();
   res.json(sanitizeData(readData()));
 });
 
@@ -253,15 +439,18 @@ app.post("/api/data", ensureAuth, (req, res) => {
     });
   }
 
+  cancelCurrentRefresh();
+
   newData.password = currentData.password;
   newData.timezone =
     newData.timezone || currentData.timezone || DEFAULT_TIMEZONE;
 
-  delete newData.cached_checks;
-  delete newData.cached_outagesCount;
-  delete newData.last_update;
+  newData.cached_checks = [];
+  newData.cached_outagesCount = 0;
+  newData.last_update = 0;
 
   writeData(newData);
+
   res.json({ success: true });
 });
 

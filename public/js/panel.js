@@ -21,21 +21,12 @@ document.addEventListener("DOMContentLoaded", () => {
     checkAuth();
   });
 
-  document.getElementById("btn-add-check").addEventListener("click", () => {
-    const container = document.getElementById("edit-checks-list");
-    const lastRow = container.querySelector(".check-edit-row:last-child");
-    const lastGroup = lastRow
-      ? lastRow.querySelector(".check-group").value
-      : "";
-    container.appendChild(
-      createCheckEditRow({
-        group: lastGroup,
-        type: "http",
-        name: "",
-        host: "",
-      }),
-    );
-    updateGroupOptions();
+  document.getElementById("btn-add-group").addEventListener("click", () => {
+    const checksList = document.getElementById("edit-checks-list");
+    const newGroup = createGroupCard("");
+    checksList.appendChild(newGroup);
+    newGroup.querySelector(".group-name-input")?.focus();
+    newGroup.scrollIntoView({ behavior: "smooth", block: "nearest" });
   });
 
   document.getElementById("btn-save-all").addEventListener("click", saveAll);
@@ -149,11 +140,33 @@ async function loadAdminData() {
 
   const checksList = document.getElementById("edit-checks-list");
   checksList.innerHTML = "";
+
+  const grouped = new Map();
   (config.checks || []).forEach((check) => {
-    checksList.appendChild(createCheckEditRow(check));
+    const gName = check.group ? check.group.trim() : "";
+    if (!grouped.has(gName)) {
+      grouped.set(gName, []);
+    }
+    grouped.get(gName).push(check);
   });
-  updateGroupOptions();
-  new Sortable(checksList, { handle: ".drag-handle", animation: 150 });
+
+  for (const [groupName, groupChecks] of grouped.entries()) {
+    const groupEl = createGroupCard(groupName);
+    const container = groupEl.querySelector(".checks-container");
+    groupChecks.forEach((check) => {
+      container.appendChild(createCheckEditRow(check));
+    });
+    checksList.appendChild(groupEl);
+  }
+
+  if (grouped.size === 0) {
+    checksList.appendChild(createGroupCard(""));
+  }
+
+  new Sortable(checksList, {
+    handle: ".group-drag-handle",
+    animation: 150,
+  });
 
   const outagesList = document.getElementById("edit-outages-list");
   outagesList.innerHTML = "";
@@ -168,19 +181,26 @@ async function loadAdminData() {
 async function saveAll() {
   const browserTimeZone =
     Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const checkRows = document.querySelectorAll(".check-edit-row");
-  const checks = Array.from(checkRows).map((row) => {
-    const type = row.querySelector(".check-type").value;
-    const chk = {
-      group: row.querySelector(".check-group").value,
-      type,
-      name: row.querySelector(".check-name").value,
-      host: row.querySelector(".check-host").value,
-    };
-    if (type === "manual") {
-      chk.manual_status = row.querySelector(".check-manual")?.value || "up";
-    }
-    return chk;
+  const groupCards = document.querySelectorAll(".group-card");
+  const checks = [];
+
+  groupCards.forEach((groupCard) => {
+    const groupName =
+      groupCard.querySelector(".group-name-input")?.value.trim() || "";
+    const checkRows = groupCard.querySelectorAll(".check-edit-row");
+    checkRows.forEach((row) => {
+      const type = row.querySelector(".check-type").value;
+      const chk = {
+        group: groupName,
+        type,
+        name: row.querySelector(".check-name").value.trim(),
+        host: row.querySelector(".check-host").value.trim(),
+      };
+      if (type === "manual") {
+        chk.manual_status = row.querySelector(".check-manual")?.value || "up";
+      }
+      checks.push(chk);
+    });
   });
 
   const outageRows = document.querySelectorAll(".outage-edit-row");
@@ -241,27 +261,53 @@ async function changePassword() {
   }
 }
 
-function createCheckEditRow(check) {
+function createGroupCard(groupName = "") {
+  const tpl = document.getElementById("tpl-group-card");
+  const clone = tpl.content.cloneNode(true);
+  const card = clone.querySelector(".group-card");
+  const nameInput = card.querySelector(".group-name-input");
+  nameInput.value = groupName;
+
+  card.querySelector(".btn-remove-group").addEventListener("click", () => {
+    card.remove();
+  });
+
+  const checksContainer = card.querySelector(".checks-container");
+  new Sortable(checksContainer, {
+    group: "checks",
+    handle: ".drag-handle",
+    animation: 150,
+  });
+
+  card.querySelector(".btn-add-check-group").addEventListener("click", () => {
+    const newCheck = createCheckEditRow();
+    checksContainer.appendChild(newCheck);
+    newCheck.querySelector(".check-name")?.focus();
+  });
+
+  return card;
+}
+
+function createCheckEditRow(check = {}) {
   const tpl = document.getElementById("tpl-check-row");
   const clone = tpl.content.cloneNode(true);
   const div = clone.querySelector(".check-edit-row");
 
-  const groupInput = div.querySelector(".check-group");
-  groupInput.value = check.group || "";
-  groupInput.addEventListener("input", updateGroupOptions);
-
-  div.querySelector(".check-type").value = check.type || "http";
-  div.querySelector(".check-name").value = check.name || "";
-  div.querySelector(".check-host").value = check.host || "";
-
   const typeSelect = div.querySelector(".check-type");
+  const nameInput = div.querySelector(".check-name");
+  const hostInput = div.querySelector(".check-host");
   const manualCol = div.querySelector(".check-manual-col");
   const hostCol = div.querySelector(".check-host-col");
+  const manualSelect = div.querySelector(".check-manual");
+
+  typeSelect.value = check.type || "http";
+  nameInput.value = check.name || "";
+  hostInput.value = check.host || "";
 
   if (check.type === "manual") {
     manualCol.classList.remove("d-none");
     hostCol.classList.add("d-none");
-    div.querySelector(".check-manual").value = check.manual_status || "up";
+    manualSelect.value = check.manual_status || "up";
   }
 
   typeSelect.addEventListener("change", () => {
@@ -276,60 +322,9 @@ function createCheckEditRow(check) {
 
   div.querySelector(".btn-remove-row").addEventListener("click", () => {
     div.remove();
-    updateGroupOptions();
   });
 
   return div;
-}
-
-function updateGroupOptions() {
-  const inputs = document.querySelectorAll(".check-group");
-  const groups = Array.from(
-    new Set(Array.from(inputs).map((i) => i.value.trim())),
-  )
-    .filter(Boolean)
-    .sort();
-
-  const datalist = document.getElementById("groups-datalist");
-  if (datalist) {
-    datalist.innerHTML = "";
-    groups.forEach((g) => {
-      const opt = document.createElement("option");
-      opt.value = g;
-      datalist.appendChild(opt);
-    });
-  }
-
-  document.querySelectorAll(".check-edit-row").forEach((row) => {
-    const menu = row.querySelector(".groups-dropdown-menu");
-    const input = row.querySelector(".check-group");
-    if (!menu || !input) return;
-    menu.innerHTML = "";
-
-    if (groups.length === 0) {
-      const li = document.createElement("li");
-      const span = document.createElement("span");
-      span.className = "dropdown-item text-muted disabled small";
-      span.textContent = "No groups yet";
-      li.appendChild(span);
-      menu.appendChild(li);
-      return;
-    }
-
-    groups.forEach((g) => {
-      const li = document.createElement("li");
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "dropdown-item small";
-      btn.textContent = g;
-      btn.addEventListener("click", () => {
-        input.value = g;
-        updateGroupOptions();
-      });
-      li.appendChild(btn);
-      menu.appendChild(li);
-    });
-  });
 }
 
 function createOutageEditRow(outage) {

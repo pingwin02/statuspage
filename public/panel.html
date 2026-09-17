@@ -55,7 +55,7 @@
                 <button id="btn-login" class="btn btn-primary">
                   Log in <i class="bi bi-arrow-right ms-1"></i>
                 </button>
-                <a href="/" class="btn btn-outline-secondary">
+                <a href="/" class="btn btn-secondary">
                   <i class="bi bi-arrow-left me-1"></i>Back to dashboard
                 </a>
               </div>
@@ -63,7 +63,7 @@
                 <button id="btn-setup" class="btn btn-success">
                   Set password <i class="bi bi-check-lg ms-1"></i>
                 </button>
-                <a href="/" class="btn btn-outline-secondary">
+                <a href="/" class="btn btn-secondary">
                   <i class="bi bi-arrow-left me-1"></i>Back to dashboard
                 </a>
               </div>
@@ -78,8 +78,8 @@
           <div class="card-body">
             <h5 class="card-title">Edit checks</h5>
             <div id="edit-checks-list"></div>
-            <button id="btn-add-check" class="btn btn-success btn-sm mt-2">
-              <i class="bi bi-plus-lg me-1"></i>Add check
+            <button id="btn-add-group" class="btn btn-success btn-sm mt-2">
+              <i class="bi bi-plus-lg me-1"></i>Add group
             </button>
           </div>
         </div>
@@ -146,7 +146,47 @@
       </div>
     </template>
 
-    <datalist id="groups-datalist"></datalist>
+    <template id="tpl-group-card">
+      <div class="card mb-3 group-card border-secondary-subtle">
+        <div
+          class="card-header d-flex align-items-center justify-content-between py-2 bg-body-secondary"
+        >
+          <div class="d-flex align-items-center flex-grow-1 me-3">
+            <i
+              class="bi bi-grip-vertical group-drag-handle fs-5 text-muted me-2"
+              style="cursor: grab"
+            ></i>
+            <span class="small text-muted fw-semibold me-2">Group</span>
+            <input
+              type="text"
+              class="form-control form-control-sm group-name-input fw-bold"
+              placeholder="Group name"
+              style="max-width: 300px"
+            />
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              class="btn btn-success btn-sm btn-add-check-group"
+              title="Add check to this group"
+            >
+              <i class="bi bi-plus-lg me-1"></i>Add check
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger btn-sm btn-remove-group"
+              title="Remove group"
+            >
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+        <div
+          class="card-body p-2 checks-container"
+          style="min-height: 48px"
+        ></div>
+      </div>
+    </template>
 
     <template id="tpl-check-row">
       <div class="check-edit-row card card-body py-2 mb-2">
@@ -155,27 +195,6 @@
             class="bi bi-grip-vertical drag-handle fs-5 text-muted flex-shrink-0"
           ></i>
           <div class="row g-2 flex-grow-1">
-            <div class="col-6 col-sm-3 col-md-2">
-              <label class="form-label small mb-0">Group</label>
-              <div class="input-group input-group-sm">
-                <input
-                  type="text"
-                  class="form-control check-group"
-                  list="groups-datalist"
-                  placeholder="Group"
-                />
-                <button
-                  class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
-                  type="button"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                  tabindex="-1"
-                ></button>
-                <ul
-                  class="dropdown-menu dropdown-menu-end groups-dropdown-menu"
-                ></ul>
-              </div>
-            </div>
             <div class="col-6 col-sm-2">
               <label class="form-label small mb-0">Type</label>
               <select class="form-select form-select-sm check-type">
@@ -185,7 +204,7 @@
                 <option value="manual">Manual</option>
               </select>
             </div>
-            <div class="col-12 col-sm">
+            <div class="col-12 col-sm-4">
               <label class="form-label small mb-0">Name</label>
               <input
                 type="text"

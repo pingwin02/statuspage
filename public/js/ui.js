@@ -1,26 +1,3 @@
-function initThemeToggle() {
-  const saved = localStorage.getItem("theme");
-  if (saved) {
-    document.documentElement.setAttribute("data-bs-theme", saved);
-  }
-  const btn = document.getElementById("btn-theme");
-  if (!btn) return;
-  updateThemeIcon(btn);
-  btn.addEventListener("click", () => {
-    const current = document.documentElement.getAttribute("data-bs-theme");
-    const next = current === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-bs-theme", next);
-    localStorage.setItem("theme", next);
-    updateThemeIcon(btn);
-  });
-}
-
-function updateThemeIcon(btn) {
-  const isDark =
-    document.documentElement.getAttribute("data-bs-theme") === "dark";
-  btn.querySelector("i").className = isDark ? "bi bi-sun" : "bi bi-moon";
-}
-
 function applyTranslations() {
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.getAttribute("data-i18n");
@@ -28,19 +5,6 @@ function applyTranslations() {
       el.textContent = translations[currentLang][key];
     }
   });
-}
-
-function showToast(message, type = "danger") {
-  const container = document.getElementById("toast-container");
-  const tpl = document.getElementById("tpl-toast");
-  const clone = tpl.content.cloneNode(true);
-  const toastEl = clone.querySelector(".toast");
-  toastEl.classList.add("text-bg-" + type);
-  toastEl.querySelector(".toast-body").textContent = message;
-  container.appendChild(clone);
-  const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
-  toast.show();
-  toastEl.addEventListener("hidden.bs.toast", () => toastEl.remove());
 }
 
 function setServicesHeadingVisible(isVisible) {
@@ -70,12 +34,14 @@ function renderLastUpdateLink(lastUpdate = null) {
 function initializeLoadingState() {
   setServicesHeadingVisible(false);
   renderLastUpdateLink();
+  updateFavicon("loading");
 }
 
 let statusEventSource = null;
 let lastRenderedChecks = [];
 
 function setBadgesLoading() {
+  updateFavicon("loading");
   document.querySelectorAll("#services-list .badge").forEach((badge) => {
     badge.className = "badge bg-secondary";
     badge.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="width: 0.75rem; height: 0.75rem;"></span>${t("loading_short")}`;
@@ -109,10 +75,6 @@ function updateSingleServiceCheck(check, outagesCount) {
       applyCheckBadge(badge, check);
     }
   }
-
-  if (typeof outagesCount === "number") {
-    updateFavicon(outagesCount > 0);
-  }
 }
 
 function setRefreshButtonDisabled(disabled) {
@@ -136,20 +98,23 @@ function connectStatusStream() {
 
   statusEventSource.addEventListener("init", (e) => {
     const data = JSON.parse(e.data);
-    updateFavicon(data.outagesCount > 0);
     if (data.is_refreshing) {
+      updateFavicon("loading");
       lastRenderedChecks = data.checks || [];
       renderServices(data.checks);
       setServicesHeadingVisible(true);
       renderLastUpdateLink(data.last_update);
       renderOutages(data.outages || [], data.timezone || browserTimeZone);
       setRefreshButtonDisabled(true);
+    } else {
+      updateFavicon(data.outagesCount > 0);
     }
   });
 
   statusEventSource.addEventListener("refresh_started", () => {
     setRefreshButtonDisabled(true);
     renderLastUpdateLink(0);
+    updateFavicon("loading");
   });
 
   statusEventSource.addEventListener("check_updated", (e) => {
@@ -165,6 +130,7 @@ function connectStatusStream() {
       renderServices(data.checks);
     }
     setRefreshButtonDisabled(false);
+    updateFavicon(data.outagesCount > 0);
   });
 
   statusEventSource.onerror = () => {
@@ -184,9 +150,9 @@ async function loadStatus() {
     }
 
     const data = await res.json();
-    updateFavicon(data.outagesCount > 0);
 
     if (data.cached) {
+      updateFavicon("loading");
       const loadingChecks = (data.checks || []).map((c) => ({
         ...c,
         is_checking: true,
@@ -202,6 +168,7 @@ async function loadStatus() {
 
       lastRenderedChecks = data.checks || [];
       renderServices(data.checks);
+      updateFavicon(data.outagesCount > 0);
     } else {
       lastRenderedChecks = data.checks || [];
       renderServices(data.checks);
@@ -209,6 +176,11 @@ async function loadStatus() {
       renderLastUpdateLink(data.last_update);
       renderOutages(data.outages || [], data.timezone || browserTimeZone);
       setRefreshButtonDisabled(!!data.is_refreshing);
+      if (data.is_refreshing) {
+        updateFavicon("loading");
+      } else {
+        updateFavicon(data.outagesCount > 0);
+      }
     }
   } catch {
     if (lastRenderedChecks.length > 0) {
@@ -264,8 +236,7 @@ function renderServices(checks) {
   });
 }
 
-function updateFavicon(hasOutage) {
-  const emoji = hasOutage ? "🔴" : "🟢";
+function updateFavicon(status) {
   let link = document.querySelector("link[rel~='icon']");
   if (!link) {
     link = document.createElement("link");
@@ -273,5 +244,11 @@ function updateFavicon(hasOutage) {
     document.head.appendChild(link);
   }
   link.type = "image/svg+xml";
-  link.href = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><text y="27" font-size="27">${emoji}</text></svg>`;
+
+  let key = status;
+  if (typeof status === "boolean" || typeof status === "number") {
+    key = status ? "down" : "up";
+  }
+
+  link.href = `data:image/svg+xml,${encodeURIComponent(getFaviconSvg(key))}`;
 }

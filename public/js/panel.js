@@ -47,19 +47,6 @@ document.addEventListener("DOMContentLoaded", () => {
     .addEventListener("click", changePassword);
 });
 
-function showToast(message, type = "danger") {
-  const container = document.getElementById("toast-container");
-  const tpl = document.getElementById("tpl-toast");
-  const clone = tpl.content.cloneNode(true);
-  const toastEl = clone.querySelector(".toast");
-  toastEl.classList.add("text-bg-" + type);
-  toastEl.querySelector(".toast-body").textContent = message;
-  container.appendChild(clone);
-  const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
-  toast.show();
-  toastEl.addEventListener("hidden.bs.toast", () => toastEl.remove());
-}
-
 async function doLogin() {
   const password = document.getElementById("login-password").value;
   if (!password) {
@@ -383,29 +370,6 @@ function normalizeDateTimeLocalValue(value) {
 function autoResize(el) {
   el.style.height = "auto";
   el.style.height = el.scrollHeight + "px";
-}
-
-function initThemeToggle() {
-  const saved = localStorage.getItem("theme");
-  if (saved) {
-    document.documentElement.setAttribute("data-bs-theme", saved);
-  }
-  const btn = document.getElementById("btn-theme");
-  if (!btn) return;
-  updateThemeIcon(btn);
-  btn.addEventListener("click", () => {
-    const current = document.documentElement.getAttribute("data-bs-theme");
-    const next = current === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-bs-theme", next);
-    localStorage.setItem("theme", next);
-    updateThemeIcon(btn);
-  });
-}
-
-function updateThemeIcon(btn) {
-  const isDark =
-    document.documentElement.getAttribute("data-bs-theme") === "dark";
-  btn.querySelector("i").className = isDark ? "bi bi-sun" : "bi bi-moon";
 }
 
 async function apiFetch(input, init) {

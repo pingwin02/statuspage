@@ -7,6 +7,7 @@ const { exec } = require("child_process");
 const { EventEmitter } = require("events");
 const util = require("util");
 const bcrypt = require("bcrypt");
+const { getFaviconSvg } = require("./public/js/utils");
 
 const execAsync = util.promisify(exec);
 const statusEmitter = new EventEmitter();
@@ -474,12 +475,16 @@ app.post("/api/password", ensureAuth, async (req, res) => {
 // --- Favicon ---
 
 app.get("/favicon.ico", (req, res) => {
-  const data = readData();
-  const emoji = data.cached_outagesCount > 0 ? "🔴" : "🟢";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><text y="27" font-size="27">${emoji}</text></svg>`;
   res.setHeader("Content-Type", "image/svg+xml");
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  res.send(svg);
+
+  if (isRefreshing) {
+    return res.send(getFaviconSvg("loading"));
+  }
+
+  const data = readData();
+  const status = data.cached_outagesCount > 0 ? "down" : "up";
+  res.send(getFaviconSvg(status));
 });
 
 // --- Start ---

@@ -16,6 +16,7 @@ A lightweight and secure status page and administration dashboard. Designed to r
 - **Flat-file JSON Storage:** Zero databases—all data in `data/config.json`.
 - **Timezone-aware Display:** Visitor timezone conversion with timezone labels.
 - **Live Relative Timestamps:** Relative outage timestamps update automatically every second without reloading the page.
+- **Dynamic SVG Status Favicon:** Real-time 3D spherical vector favicon reflecting system operational health (operational green, outage red, and loading grey).
 - **Bootstrap 5 Dark UI:** Responsive, beautiful dark mode.
 - **Localization:** English / Polish language toggle.
 

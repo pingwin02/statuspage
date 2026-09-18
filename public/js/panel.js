@@ -306,16 +306,39 @@ function createCheckEditRow(check = {}) {
   const hostInput = div.querySelector(".check-host");
   const manualCol = div.querySelector(".check-manual-col");
   const hostCol = div.querySelector(".check-host-col");
-  const manualSelect = div.querySelector(".check-manual");
+  const manualInput = div.querySelector(".check-manual");
+  const btnUp = div.querySelector(".btn-status-up");
+  const btnDown = div.querySelector(".btn-status-down");
+
+  function setManualStatus(status) {
+    const isUp = status === "up";
+    if (manualInput) {
+      manualInput.value = isUp ? "up" : "down";
+    }
+    if (btnUp && btnDown) {
+      if (isUp) {
+        btnUp.className =
+          "btn btn-sm btn-success text-white fw-bold btn-status-up";
+        btnDown.className = "btn btn-sm btn-outline-danger btn-status-down";
+      } else {
+        btnUp.className = "btn btn-sm btn-outline-success btn-status-up";
+        btnDown.className =
+          "btn btn-sm btn-danger text-white fw-bold btn-status-down";
+      }
+    }
+  }
 
   typeSelect.value = check.type || "http";
   nameInput.value = check.name || "";
   hostInput.value = check.host || "";
+  setManualStatus(check.manual_status || "up");
+
+  btnUp?.addEventListener("click", () => setManualStatus("up"));
+  btnDown?.addEventListener("click", () => setManualStatus("down"));
 
   if (check.type === "manual") {
     manualCol.classList.remove("d-none");
     hostCol.classList.add("d-none");
-    manualSelect.value = check.manual_status || "up";
   }
 
   typeSelect.addEventListener("change", () => {
@@ -328,8 +351,10 @@ function createCheckEditRow(check = {}) {
     }
   });
 
-  div.querySelector(".btn-remove-row").addEventListener("click", () => {
-    div.remove();
+  div.querySelectorAll(".btn-remove-row").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      div.remove();
+    });
   });
 
   return div;
@@ -352,8 +377,10 @@ function createOutageEditRow(outage) {
   textarea.addEventListener("input", () => autoResize(textarea));
   setTimeout(() => autoResize(textarea), 0);
 
-  div.querySelector(".btn-remove-row").addEventListener("click", () => {
-    div.remove();
+  div.querySelectorAll(".btn-remove-row").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      div.remove();
+    });
   });
 
   return div;

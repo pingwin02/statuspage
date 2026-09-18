@@ -103,3 +103,8 @@
   word-break: break-word;
   text-align: center;
 }
+
+#admin-panel .check-edit-row,
+#admin-panel .outage-edit-row {
+  background-color: var(--bs-tertiary-bg);
+}

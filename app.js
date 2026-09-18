@@ -199,7 +199,6 @@ let isRefreshing = false;
 let refreshAbortController = null;
 let refreshPromise = null;
 let activeChecks = null;
-let activeOutagesCount = 0;
 
 function cancelCurrentRefresh() {
   if (refreshAbortController) {
@@ -220,7 +219,6 @@ function getInitialCheckState(item) {
     type: item.type || "http",
     status: isManual ? (manualUp ? "success" : "failed") : "checking",
     url: item.host || "",
-    is_checking: !isManual,
   };
 }
 
@@ -228,7 +226,6 @@ async function executeChecks(checks, signal) {
   const total = (checks || []).length;
   let completed = 0;
   activeChecks = (checks || []).map(getInitialCheckState);
-  activeOutagesCount = activeChecks.filter((c) => c.status === "failed").length;
 
   const checkPromises = (checks || []).map(async (item, index) => {
     if (signal?.aborted) return null;
@@ -244,26 +241,21 @@ async function executeChecks(checks, signal) {
       type: item.type || "http",
       status: isUp ? "success" : "failed",
       url: item.host || "",
-      is_checking: false,
     };
 
     if (activeChecks) {
       activeChecks[index] = result;
       completed++;
-      activeOutagesCount = activeChecks.filter(
-        (c) => c.status === "failed",
-      ).length;
 
       statusEmitter.emit("check_updated", {
         index,
         check: result,
-        outagesCount: activeOutagesCount,
         completed,
         total,
       });
     }
 
-    return { isUp, result };
+    return result;
   });
 
   const resolved = await Promise.all(checkPromises);
@@ -271,19 +263,10 @@ async function executeChecks(checks, signal) {
     return null;
   }
 
-  const results = [];
-  let outagesCount = 0;
-
-  for (const entry of resolved) {
-    if (!entry) continue;
-    if (!entry.isUp) outagesCount++;
-    results.push(entry.result);
-  }
-
+  const results = resolved.filter(Boolean);
   activeChecks = results;
-  activeOutagesCount = outagesCount;
 
-  return { results, outagesCount };
+  return results;
 }
 
 function triggerBackgroundRefresh() {
@@ -297,7 +280,6 @@ function triggerBackgroundRefresh() {
 
   const initialData = readData();
   activeChecks = (initialData.checks || []).map(getInitialCheckState);
-  activeOutagesCount = activeChecks.filter((c) => c.status === "failed").length;
 
   refreshPromise = (async () => {
     try {
@@ -306,21 +288,18 @@ function triggerBackgroundRefresh() {
         total: (dataAtStart.checks || []).length,
       });
 
-      const outcome = await executeChecks(dataAtStart.checks, currentSignal);
-      if (currentSignal.aborted || !outcome) {
+      const results = await executeChecks(dataAtStart.checks, currentSignal);
+      if (currentSignal.aborted || !results) {
         return;
       }
 
-      const { results, outagesCount } = outcome;
       const currentData = readData();
       currentData.cached_checks = results;
-      currentData.cached_outagesCount = outagesCount;
       currentData.last_update = Date.now();
       writeData(currentData);
 
       statusEmitter.emit("done", {
         checks: results,
-        outagesCount,
         last_update: currentData.last_update,
       });
     } catch {
@@ -352,14 +331,10 @@ app.get("/api/status/stream", (req, res) => {
     isRefreshing && activeChecks
       ? activeChecks
       : currentData.cached_checks || [];
-  const countToSend = isRefreshing
-    ? activeOutagesCount
-    : currentData.cached_outagesCount || 0;
 
   send("init", {
     checks: checksToSend,
     outages: currentData.outages || [],
-    outagesCount: countToSend,
     last_update: currentData.last_update,
     timezone: currentData.timezone || DEFAULT_TIMEZONE,
     is_refreshing: isRefreshing,
@@ -397,9 +372,6 @@ app.get("/api/status", async (req, res) => {
 
   const checksToSend =
     isRefreshing && activeChecks ? activeChecks : data.cached_checks || [];
-  const countToSend = isRefreshing
-    ? activeOutagesCount
-    : data.cached_outagesCount || 0;
 
   if (hasCachedChecks && !isRefreshing) {
     return res.json({
@@ -407,7 +379,6 @@ app.get("/api/status", async (req, res) => {
       is_refreshing: false,
       checks: checksToSend,
       outages: data.outages || [],
-      outagesCount: countToSend,
       last_update: data.last_update,
       timezone: data.timezone || DEFAULT_TIMEZONE,
     });
@@ -418,7 +389,6 @@ app.get("/api/status", async (req, res) => {
     is_refreshing: isRefreshing,
     checks: checksToSend,
     outages: data.outages || [],
-    outagesCount: countToSend,
     last_update: isRefreshing ? 0 : data.last_update,
     timezone: data.timezone || DEFAULT_TIMEZONE,
   });
@@ -453,7 +423,6 @@ app.post("/api/data", ensureAuth, (req, res) => {
     newData.timezone || currentData.timezone || DEFAULT_TIMEZONE;
 
   newData.cached_checks = [];
-  newData.cached_outagesCount = 0;
   newData.last_update = 0;
 
   writeData(newData);
@@ -483,7 +452,10 @@ app.get("/favicon.ico", (req, res) => {
   }
 
   const data = readData();
-  const status = data.cached_outagesCount > 0 ? "down" : "up";
+  const hasOutage = (data.cached_checks || []).some(
+    (c) => c.status === "failed",
+  );
+  const status = hasOutage ? "down" : "up";
   res.send(getFaviconSvg(status));
 });
 

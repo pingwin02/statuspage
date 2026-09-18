@@ -56,7 +56,7 @@ function setBadgesLoading() {
 
 function applyCheckBadge(badge, check) {
   badge.className = "badge";
-  if (check.is_checking || check.status === "checking") {
+  if (check.status === "checking") {
     badge.classList.add("bg-secondary");
     badge.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="width: 0.75rem; height: 0.75rem;"></span>${t("loading_short")}`;
   } else if (check.status === "success") {
@@ -68,7 +68,11 @@ function applyCheckBadge(badge, check) {
   }
 }
 
-function updateSingleServiceCheck(check, outagesCount) {
+function hasFailedChecks(checks) {
+  return (checks || []).some((c) => c.status === "failed");
+}
+
+function updateSingleServiceCheck(check) {
   const li = document.querySelector(
     `[data-service-key="${check.group}:${check.name}"]`,
   );
@@ -113,7 +117,7 @@ function connectStatusStream() {
       renderOutages(data.outages || [], data.timezone || browserTimeZone);
       setRefreshButtonDisabled(true);
     } else {
-      updateFavicon(data.outagesCount > 0);
+      updateFavicon(hasFailedChecks(data.checks));
     }
   });
 
@@ -125,7 +129,7 @@ function connectStatusStream() {
 
   statusEventSource.addEventListener("check_updated", (e) => {
     const data = JSON.parse(e.data);
-    updateSingleServiceCheck(data.check, data.outagesCount);
+    updateSingleServiceCheck(data.check);
   });
 
   statusEventSource.addEventListener("done", (e) => {
@@ -136,7 +140,7 @@ function connectStatusStream() {
       renderServices(data.checks);
     }
     setRefreshButtonDisabled(false);
-    updateFavicon(data.outagesCount > 0);
+    updateFavicon(hasFailedChecks(data.checks));
   });
 
   statusEventSource.onerror = () => {
@@ -161,7 +165,6 @@ async function loadStatus() {
       updateFavicon("loading");
       const loadingChecks = (data.checks || []).map((c) => ({
         ...c,
-        is_checking: true,
         status: "checking",
       }));
       renderServices(loadingChecks);
@@ -174,7 +177,7 @@ async function loadStatus() {
 
       lastRenderedChecks = data.checks || [];
       renderServices(data.checks);
-      updateFavicon(data.outagesCount > 0);
+      updateFavicon(hasFailedChecks(data.checks));
     } else {
       lastRenderedChecks = data.checks || [];
       renderServices(data.checks);
@@ -185,7 +188,7 @@ async function loadStatus() {
       if (data.is_refreshing) {
         updateFavicon("loading");
       } else {
-        updateFavicon(data.outagesCount > 0);
+        updateFavicon(hasFailedChecks(data.checks));
       }
     }
   } catch {

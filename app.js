@@ -419,8 +419,19 @@ app.post("/api/data", ensureAuth, (req, res) => {
   cancelCurrentRefresh();
 
   newData.password = currentData.password;
-  newData.timezone =
+
+  const requestedTimezone =
     newData.timezone || currentData.timezone || DEFAULT_TIMEZONE;
+
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: requestedTimezone });
+    newData.timezone = requestedTimezone;
+  } catch {
+    return res.status(400).json({
+      success: false,
+      error: "Invalid timezone",
+    });
+  }
 
   newData.cached_checks = [];
   newData.last_update = 0;

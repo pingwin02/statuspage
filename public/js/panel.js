@@ -45,6 +45,17 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("btn-change-password")
     .addEventListener("click", changePassword);
+
+  document
+    .getElementById("btn-detect-timezone")
+    ?.addEventListener("click", () => {
+      const browserTz =
+        Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Warsaw";
+      const select = document.getElementById("config-timezone");
+      if (select) {
+        select.value = browserTz;
+      }
+    });
 });
 
 async function doLogin() {
@@ -163,11 +174,16 @@ async function loadAdminData() {
   sortedOutages.forEach((outage) => {
     outagesList.appendChild(createOutageEditRow(outage));
   });
+
+  populateTimezoneSelect(config.timezone);
 }
 
 async function saveAll() {
-  const browserTimeZone =
-    Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const timezoneSelect = document.getElementById("config-timezone");
+  const selectedTimezone =
+    timezoneSelect?.value?.trim() ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone ||
+    "Europe/Warsaw";
   const groupCards = document.querySelectorAll(".group-card");
   const checks = [];
 
@@ -214,7 +230,12 @@ async function saveAll() {
 
   const res = await apiFetch("/api/data");
   const existing = await res.json();
-  const updated = { ...existing, checks, outages, timezone: browserTimeZone };
+  const updated = {
+    ...existing,
+    checks,
+    outages,
+    timezone: selectedTimezone,
+  };
 
   const saveRes = await apiFetch("/api/data", {
     method: "POST",
@@ -379,4 +400,74 @@ async function apiFetch(input, init) {
     throw new Error("Unauthorized");
   }
   return res;
+}
+
+function populateTimezoneSelect(selectedTimezone) {
+  const select = document.getElementById("config-timezone");
+  if (!select) return;
+  select.innerHTML = "";
+
+  let timezones = [];
+  if (typeof Intl.supportedValuesOf === "function") {
+    try {
+      timezones = Intl.supportedValuesOf("timeZone");
+    } catch {
+      timezones = [];
+    }
+  }
+
+  if (!Array.isArray(timezones) || timezones.length === 0) {
+    timezones = [
+      "Africa/Cairo",
+      "America/Anchorage",
+      "America/Chicago",
+      "America/Denver",
+      "America/Los_Angeles",
+      "America/New_York",
+      "America/Sao_Paulo",
+      "America/Toronto",
+      "Asia/Bangkok",
+      "Asia/Dubai",
+      "Asia/Hong_Kong",
+      "Asia/Jerusalem",
+      "Asia/Kolkata",
+      "Asia/Seoul",
+      "Asia/Shanghai",
+      "Asia/Singapore",
+      "Asia/Tokyo",
+      "Australia/Sydney",
+      "Europe/Amsterdam",
+      "Europe/Berlin",
+      "Europe/London",
+      "Europe/Madrid",
+      "Europe/Paris",
+      "Europe/Rome",
+      "Europe/Warsaw",
+      "Pacific/Auckland",
+      "Pacific/Honolulu",
+      "UTC",
+    ];
+  }
+
+  const browserTz =
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Warsaw";
+  const currentTz = selectedTimezone || browserTz;
+
+  const tzSet = new Set(timezones);
+  tzSet.add(browserTz);
+  if (selectedTimezone) {
+    tzSet.add(selectedTimezone);
+  }
+
+  const sortedTimezones = Array.from(tzSet).sort((a, b) => a.localeCompare(b));
+
+  sortedTimezones.forEach((tz) => {
+    const opt = document.createElement("option");
+    opt.value = tz;
+    opt.textContent = tz;
+    if (tz === currentTz) {
+      opt.selected = true;
+    }
+    select.appendChild(opt);
+  });
 }

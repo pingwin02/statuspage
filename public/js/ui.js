@@ -13,16 +13,22 @@ function setServicesHeadingVisible(isVisible) {
   heading.classList.toggle("d-none", !isVisible);
 }
 
+let lastRenderedLastUpdate = null;
+
 function renderLastUpdateLink(lastUpdate = null) {
+  if (lastUpdate !== null) {
+    lastRenderedLastUpdate = lastUpdate;
+  }
   const link = document.getElementById("last-update");
   if (!link) return;
 
-  if (!lastUpdate) {
+  const value = lastUpdate !== null ? lastUpdate : lastRenderedLastUpdate;
+  if (!value) {
     link.textContent = `${t("last_update")} ${t("loading_short")}`;
     return;
   }
 
-  const date = new Date(Number(lastUpdate));
+  const date = new Date(Number(value));
   if (Number.isNaN(date.getTime())) {
     link.textContent = `${t("last_update")} ${t("loading_short")}`;
     return;

@@ -18,7 +18,7 @@ A lightweight and secure status page and administration dashboard. Designed to r
 - **Live Relative Timestamps:** Relative outage timestamps update automatically every second without reloading the page.
 - **Dynamic SVG Status Favicon:** Real-time 3D spherical vector favicon reflecting system operational health (operational green, outage red, and loading grey).
 - **Bootstrap 5 Dark UI:** Responsive, beautiful dark mode.
-- **Localization:** English / Polish language toggle.
+- **Localization:** Instant in-place English / Polish language toggle without page reloads, status refetches, or fake loading.
 
 ## Prerequisites
 

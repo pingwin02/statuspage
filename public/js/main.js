@@ -18,7 +18,12 @@ document.addEventListener("DOMContentLoaded", () => {
     langBtn.textContent = currentLang === "pl" ? "EN" : "PL";
     applyTranslations();
     renderLastUpdateLink();
-    loadStatus();
+    if (lastRenderedChecks.length > 0) {
+      renderServices(lastRenderedChecks);
+    }
+    if (lastOutagesData.length > 0) {
+      renderOutages(lastOutagesData, lastSourceTimeZone);
+    }
   });
 
   connectStatusStream();

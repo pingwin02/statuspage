@@ -94,7 +94,62 @@ function setRefreshButtonDisabled(disabled) {
   }
 }
 
+let statusPollingTimer = null;
+let statusLoadingSafetyTimer = null;
+let statusStreamReconnectTimer = null;
+
+function stopStatusPolling() {
+  if (statusPollingTimer) {
+    clearInterval(statusPollingTimer);
+    statusPollingTimer = null;
+  }
+}
+
+function stopStatusSafetyTimer() {
+  if (statusLoadingSafetyTimer) {
+    clearTimeout(statusLoadingSafetyTimer);
+    statusLoadingSafetyTimer = null;
+  }
+}
+
+function startStatusSafetyTimer() {
+  stopStatusSafetyTimer();
+  statusLoadingSafetyTimer = setTimeout(async () => {
+    stopStatusPolling();
+    setRefreshButtonDisabled(false);
+    await loadStatus();
+  }, 20000);
+}
+
+function startStatusPolling() {
+  if (statusPollingTimer) return;
+  startStatusSafetyTimer();
+  statusPollingTimer = setInterval(async () => {
+    try {
+      const res = await fetch("/api/status");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.is_refreshing) {
+        stopStatusPolling();
+        stopStatusSafetyTimer();
+        lastRenderedChecks = data.checks || [];
+        renderServices(data.checks);
+        setServicesHeadingVisible(true);
+        renderLastUpdateLink(data.last_update);
+        renderOutages(data.outages || [], data.timezone || browserTimeZone);
+        setRefreshButtonDisabled(false);
+        updateFavicon(hasFailedChecks(data.checks));
+      }
+    } catch {}
+  }, 2000);
+}
+
 function connectStatusStream() {
+  if (statusStreamReconnectTimer) {
+    clearTimeout(statusStreamReconnectTimer);
+    statusStreamReconnectTimer = null;
+  }
+
   if (statusEventSource) {
     statusEventSource.close();
     statusEventSource = null;
@@ -104,49 +159,65 @@ function connectStatusStream() {
     return;
   }
 
-  statusEventSource = new EventSource("/api/status/stream");
+  try {
+    statusEventSource = new EventSource("/api/status/stream");
 
-  statusEventSource.addEventListener("init", (e) => {
-    const data = JSON.parse(e.data);
-    if (data.is_refreshing) {
-      updateFavicon("loading");
-      lastRenderedChecks = data.checks || [];
-      renderServices(data.checks);
-      setServicesHeadingVisible(true);
-      renderLastUpdateLink(data.last_update);
-      renderOutages(data.outages || [], data.timezone || browserTimeZone);
+    statusEventSource.addEventListener("init", (e) => {
+      const data = JSON.parse(e.data);
+      if (data.is_refreshing) {
+        updateFavicon("loading");
+        lastRenderedChecks = data.checks || [];
+        renderServices(data.checks);
+        setServicesHeadingVisible(true);
+        renderLastUpdateLink(data.last_update);
+        renderOutages(data.outages || [], data.timezone || browserTimeZone);
+        setRefreshButtonDisabled(true);
+        startStatusPolling();
+      } else {
+        stopStatusPolling();
+        stopStatusSafetyTimer();
+        updateFavicon(hasFailedChecks(data.checks));
+      }
+    });
+
+    statusEventSource.addEventListener("refresh_started", () => {
       setRefreshButtonDisabled(true);
-    } else {
+      renderLastUpdateLink(0);
+      updateFavicon("loading");
+      startStatusPolling();
+    });
+
+    statusEventSource.addEventListener("check_updated", (e) => {
+      const data = JSON.parse(e.data);
+      updateSingleServiceCheck(data.check);
+    });
+
+    statusEventSource.addEventListener("done", (e) => {
+      stopStatusPolling();
+      stopStatusSafetyTimer();
+      const data = JSON.parse(e.data);
+      renderLastUpdateLink(data.last_update);
+      if (Array.isArray(data.checks)) {
+        lastRenderedChecks = data.checks;
+        renderServices(data.checks);
+      }
+      setRefreshButtonDisabled(false);
       updateFavicon(hasFailedChecks(data.checks));
-    }
-  });
+    });
 
-  statusEventSource.addEventListener("refresh_started", () => {
-    setRefreshButtonDisabled(true);
-    renderLastUpdateLink(0);
-    updateFavicon("loading");
-  });
-
-  statusEventSource.addEventListener("check_updated", (e) => {
-    const data = JSON.parse(e.data);
-    updateSingleServiceCheck(data.check);
-  });
-
-  statusEventSource.addEventListener("done", (e) => {
-    const data = JSON.parse(e.data);
-    renderLastUpdateLink(data.last_update);
-    if (Array.isArray(data.checks)) {
-      lastRenderedChecks = data.checks;
-      renderServices(data.checks);
-    }
-    setRefreshButtonDisabled(false);
-    updateFavicon(hasFailedChecks(data.checks));
-  });
-
-  statusEventSource.onerror = () => {
-    statusEventSource.close();
-    statusEventSource = null;
-  };
+    statusEventSource.onerror = () => {
+      if (statusEventSource) {
+        statusEventSource.close();
+        statusEventSource = null;
+      }
+      if (!statusStreamReconnectTimer) {
+        statusStreamReconnectTimer = setTimeout(() => {
+          statusStreamReconnectTimer = null;
+          connectStatusStream();
+        }, 5000);
+      }
+    };
+  } catch {}
 }
 
 async function loadStatus() {
@@ -156,12 +227,17 @@ async function loadStatus() {
       if (lastRenderedChecks.length > 0) {
         renderServices(lastRenderedChecks);
       }
+      setRefreshButtonDisabled(false);
+      stopStatusPolling();
+      stopStatusSafetyTimer();
       return;
     }
 
     const data = await res.json();
 
     if (data.cached) {
+      stopStatusPolling();
+      stopStatusSafetyTimer();
       updateFavicon("loading");
       const loadingChecks = (data.checks || []).map((c) => ({
         ...c,
@@ -187,7 +263,10 @@ async function loadStatus() {
       setRefreshButtonDisabled(!!data.is_refreshing);
       if (data.is_refreshing) {
         updateFavicon("loading");
+        startStatusPolling();
       } else {
+        stopStatusPolling();
+        stopStatusSafetyTimer();
         updateFavicon(hasFailedChecks(data.checks));
       }
     }
@@ -195,6 +274,9 @@ async function loadStatus() {
     if (lastRenderedChecks.length > 0) {
       renderServices(lastRenderedChecks);
     }
+    setRefreshButtonDisabled(false);
+    stopStatusPolling();
+    stopStatusSafetyTimer();
   }
 }
 

@@ -34,4 +34,16 @@ document.addEventListener("DOMContentLoaded", () => {
     setBadgesLoading();
     loadStatus();
   });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      if (
+        !statusEventSource ||
+        statusEventSource.readyState === EventSource.CLOSED
+      ) {
+        connectStatusStream();
+      }
+      loadStatus();
+    }
+  });
 });

@@ -29,7 +29,7 @@ app.use(
   session({
     secret: "tinystatus_secret_key",
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
   }),
 );
 
@@ -174,7 +174,10 @@ async function runCheck(item, signal) {
   if (item.type === "ping") {
     if (signal?.aborted) return false;
     try {
-      await execAsync(`ping -c 1 -W 5 ${item.host}`, { signal });
+      await execAsync(`ping -c 1 -W 5 ${item.host}`, {
+        signal,
+        timeout: 6000,
+      });
       return true;
     } catch {
       return false;
@@ -185,7 +188,10 @@ async function runCheck(item, signal) {
     if (signal?.aborted) return false;
     try {
       const parts = item.host.split(" ");
-      await execAsync(`nc -z -w 5 ${parts[0]} ${parts[1]}`, { signal });
+      await execAsync(`nc -z -w 5 ${parts[0]} ${parts[1]}`, {
+        signal,
+        timeout: 6000,
+      });
       return true;
     } catch {
       return false;
@@ -290,6 +296,11 @@ function triggerBackgroundRefresh() {
 
       const results = await executeChecks(dataAtStart.checks, currentSignal);
       if (currentSignal.aborted || !results) {
+        const fallbackData = readData();
+        statusEmitter.emit("done", {
+          checks: fallbackData.cached_checks || [],
+          last_update: fallbackData.last_update || 0,
+        });
         return;
       }
 
@@ -303,6 +314,11 @@ function triggerBackgroundRefresh() {
         last_update: currentData.last_update,
       });
     } catch {
+      const fallbackData = readData();
+      statusEmitter.emit("done", {
+        checks: fallbackData.cached_checks || [],
+        last_update: fallbackData.last_update || 0,
+      });
     } finally {
       if (refreshAbortController?.signal === currentSignal) {
         refreshAbortController = null;
@@ -320,11 +336,16 @@ app.get("/api/status/stream", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders();
 
   const send = (event, data) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
+
+  const keepAliveInterval = setInterval(() => {
+    res.write(": keepalive\n\n");
+  }, 15000);
 
   const currentData = readData();
   const checksToSend =
@@ -349,6 +370,7 @@ app.get("/api/status/stream", (req, res) => {
   statusEmitter.on("refresh_started", onStarted);
 
   req.on("close", () => {
+    clearInterval(keepAliveInterval);
     statusEmitter.off("check_updated", onCheckUpdated);
     statusEmitter.off("done", onDone);
     statusEmitter.off("refresh_started", onStarted);
